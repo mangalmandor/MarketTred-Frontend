@@ -1,14 +1,28 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
+// export const fetchChatHistory = createAsyncThunk(
+//     'chat/fetchHistory',
+//     async ({ otherUserId, productId }) => {
+//         const response = await api.get(`/chat/${otherUserId}/${productId}`);
+//         return response.data;
+//     }
+// );
 export const fetchChatHistory = createAsyncThunk(
     'chat/fetchHistory',
-    async ({ otherUserId, productId }) => {
-        const response = await api.get(`/chat/${otherUserId}/${productId}`);
-        return response.data;
+    async ({ otherUserId, productId }, { rejectWithValue }) => {
+        if (!otherUserId || !productId || otherUserId === 'null' || productId === 'null') {
+            console.error("Missing IDs for fetchChatHistory");
+            return rejectWithValue("Missing User or Product ID");
+        }
+        try {
+            const response = await api.get(`/chat/${otherUserId}/${productId}`);
+            return response.data;
+        } catch (err) {
+            return rejectWithValue(err.response.data);
+        }
     }
 );
-
 export const fetchAllConversations = createAsyncThunk(
     'chat/fetchAllConversations',
     async () => {
