@@ -28,6 +28,7 @@ export const logoutUser = createAsyncThunk('auth/logout', async () => {
     await api.post('/auth/logout');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('cartItems');
     disconnectSocket();
     return null;
 });
