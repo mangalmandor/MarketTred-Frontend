@@ -21,10 +21,10 @@ const Home = () => {
                         </span>
                     </div>
 
-                    <div className="flex items-center gap-2 md:gap-4">
+                   <div className="flex items-center gap-2 md:gap-4">
                         <button
                             onClick={() => navigate('/login')}
-                            className="px-5 py-2.5 text-sm font-semibold text-gray-400 hover:text-gray-100 hover:bg-gray-800/50 rounded-full transition-all"
+                            className="hidden md:block px-5 py-2.5 text-sm font-semibold text-gray-400 hover:text-gray-100 hover:bg-gray-800/50 rounded-full transition-all"
                         >
                             Sign in
                         </button>
