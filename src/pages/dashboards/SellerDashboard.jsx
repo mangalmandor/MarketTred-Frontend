@@ -83,20 +83,20 @@ const SellerDashboard = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] p-6 lg:p-10 font-sans selection:bg-blue-500/30 selection:text-blue-200 relative z-0 overflow-hidden">
-            <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-blue-600/10 blur-[150px] rounded-full pointer-events-none -z-10"></div>
-            <div className="absolute bottom-[-20%] right-[-10%] w-[40vw] h-[40vw] bg-indigo-600/10 blur-[150px] rounded-full pointer-events-none -z-10"></div>
+        <div className="min-h-screen bg-[#050505] p-4 sm:p-6 lg:p-10 font-sans selection:bg-blue-500/30 selection:text-blue-200 relative z-0 overflow-x-hidden">
+            <div className="absolute top-[-10%] left-[-10%] w-[70vw] h-[70vw] md:w-[50vw] md:h-[50vw] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none -z-10"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] md:w-[40vw] md:h-[40vw] bg-indigo-600/10 blur-[120px] rounded-full pointer-events-none -z-10"></div>
 
-            <div className="max-w-7xl mx-auto relative z-10 overflow-y-auto">
-                <header className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
-                    <div>
-                        <h1 className="text-3xl font-black text-gray-100 tracking-tight">Seller Account</h1>
-                        <p className="text-gray-400 mt-1 font-medium">Manage your shop, <span className="text-blue-400">{user?.name}</span>.</p>
+            <div className="max-w-7xl mx-auto relative z-10">
+                <header className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 sm:mb-10 gap-6">
+                    <div className="max-w-[80%]">
+                        <h1 className="text-2xl sm:text-3xl font-black text-gray-100 tracking-tight">Seller Hub</h1>
+                        <p className="text-gray-400 mt-1 font-medium text-sm sm:text-base line-clamp-1">Manage your shop, <span className="text-blue-400">{user?.name}</span>.</p>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0">
                         <div
-                            className="relative cursor-pointer group"
+                            className="relative cursor-pointer group flex-shrink-0"
                             onClick={() => document.getElementById('recent-chats')?.scrollIntoView({ behavior: 'smooth' })}
                         >
                             <style>
@@ -109,96 +109,96 @@ const SellerDashboard = () => {
                                 }
                                 .animate-wiggle { animation: bell-wiggle 0.8s ease-in-out infinite; }`}
                             </style>
-                            <div className={`p-3 rounded-xl transition-all border ${notificationCount > 0 ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-gray-900/50 border-gray-800 text-gray-500 hover:text-gray-300'}`}>
-                                <svg className={`w-6 h-6 ${notificationCount > 0 ? 'animate-wiggle' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className={`p-2.5 sm:p-3 rounded-xl transition-all border ${notificationCount > 0 ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-gray-900/50 border-gray-800 text-gray-500 hover:text-gray-300'}`}>
+                                <svg className={`w-5 h-5 sm:w-6 h-6 ${notificationCount > 0 ? 'animate-wiggle' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                                 </svg>
                             </div>
                             {notificationCount > 0 && (
-                                <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-[#050505] shadow-[0_0_10px_rgba(239,68,68,0.5)]">
+                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full border-2 border-[#050505]">
                                     {notificationCount}
                                 </span>
                             )}
                         </div>
-                        <button onClick={() => navigate('/dashboard/seller/add-product')} className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] active:scale-95">
-                            Product Hub
+                        <button onClick={() => navigate('/dashboard/seller/add-product')} className="px-4 sm:px-6 py-2 sm:py-2.5 bg-blue-600 text-white text-sm sm:text-base font-bold rounded-xl hover:bg-blue-500 transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] active:scale-95 whitespace-nowrap">
+                            Add Product
                         </button>
-                        <button onClick={handleLogout} className="px-6 py-2.5 bg-transparent border border-red-500/50 text-red-400 font-bold rounded-xl hover:bg-red-500/10 hover:border-red-500 transition-all active:scale-95">
+                        <button onClick={handleLogout} className="px-4 sm:px-6 py-2 sm:py-2.5 bg-transparent border border-red-500/50 text-red-400 text-sm sm:text-base font-bold rounded-xl hover:bg-red-500/10 transition-all active:scale-95 whitespace-nowrap">
                             Log Out
                         </button>
                     </div>
                 </header>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2">
-                        <div className="bg-gray-900/40 backdrop-blur-xl rounded-[2.5rem] p-8 border border-gray-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] h-[600px] flex flex-col">
-                            <h2 className="text-xl font-black text-gray-100 mb-6 tracking-tight">Your Live Products</h2>
-                            <div className="overflow-y-auto pr-2 flex-grow custom-scrollbar">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+                    <div className="lg:col-span-2 order-2 lg:order-1">
+                        <div className="bg-gray-900/40 backdrop-blur-xl rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 border border-gray-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] min-h-[400px] lg:h-[600px] flex flex-col">
+                            <h2 className="text-lg sm:text-xl font-black text-gray-100 mb-6 tracking-tight">Your Live Products</h2>
+                            <div className="overflow-y-auto pr-1 sm:pr-2 flex-grow custom-scrollbar">
                                 {productsLoading ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                         {[1, 2, 3, 4].map(n => (
                                             <div key={n} className="bg-gray-800/30 rounded-2xl p-4 border border-gray-800 animate-pulse">
-                                                <div className="w-full h-40 bg-gray-700/50 rounded-xl mb-3"></div>
+                                                <div className="w-full h-32 sm:h-40 bg-gray-700/50 rounded-xl mb-3"></div>
                                                 <div className="h-4 bg-gray-700/50 rounded w-3/4 mb-2"></div>
                                                 <div className="h-4 bg-gray-700/50 rounded w-1/4"></div>
                                             </div>
                                         ))}
                                     </div>
                                 ) : myProducts.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pb-4">
                                         {myProducts.map(product => (
                                             <div key={product._id} className="bg-gray-800/40 rounded-2xl p-4 border border-gray-700/50 hover:bg-gray-800 hover:border-blue-500/30 cursor-pointer transition-all group" onClick={() => navigate(`/product/${product._id}`)}>
-                                                <div className="overflow-hidden rounded-xl mb-3">
-                                                    <img src={product.image} className="w-full h-40 object-cover transform group-hover:scale-105 transition-transform duration-500" alt="p" />
+                                                <div className="overflow-hidden rounded-xl mb-3 aspect-video sm:aspect-auto">
+                                                    <img src={product.image} className="w-full h-32 sm:h-40 object-cover transform group-hover:scale-105 transition-transform duration-500" alt="p" />
                                                 </div>
-                                                <h3 className="font-bold text-gray-100 truncate">{product.title}</h3>
-                                                <p className="text-blue-400 font-black tracking-wide">${product.price}</p>
+                                                <h3 className="font-bold text-gray-100 truncate text-sm sm:text-base">{product.title}</h3>
+                                                <p className="text-blue-400 font-black tracking-wide text-sm sm:text-base">${product.price}</p>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="h-full flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-gray-800 rounded-2xl">
-                                        <svg className="w-12 h-12 mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                                        <p className="font-medium">No products listed yet.</p>
+                                    <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-gray-800 rounded-2xl p-6">
+                                        <svg className="w-10 h-10 sm:w-12 h-12 mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                                        <p className="font-medium text-sm sm:text-base">No products listed yet.</p>
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    <div id="recent-chats" className="lg:col-span-1">
-                        <div className="bg-gray-900/40 backdrop-blur-xl rounded-[2.5rem] p-6 border border-gray-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] h-[600px] flex flex-col sticky top-6">
-                            <h3 className="text-xl font-black text-gray-100 mb-6 flex items-center gap-2 tracking-tight">
-                                <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                    <div id="recent-chats" className="lg:col-span-1 order-1 lg:order-2 scroll-mt-6">
+                        <div className="bg-gray-900/40 backdrop-blur-xl rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-6 border border-gray-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] min-h-[300px] lg:h-[600px] flex flex-col lg:sticky lg:top-6">
+                            <h3 className="text-lg sm:text-xl font-black text-gray-100 mb-6 flex items-center gap-2 tracking-tight">
+                                <svg className="w-5 h-5 sm:w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
                                 Buyer Messages
                             </h3>
 
-                            <div className="flex-grow overflow-y-auto space-y-4 pr-1 custom-scrollbar">
+                            <div className="flex-grow overflow-y-auto space-y-3 sm:space-y-4 pr-1 custom-scrollbar">
                                 {validConversations.length > 0 ? (
                                     validConversations.map((chat) => (
                                         <div
                                             key={`${chat.product?._id}-${chat.buyer?._id}`}
                                             onClick={() => goToChat(chat.buyer, chat.product)}
-                                            className={`p-4 rounded-2xl border transition-all cursor-pointer relative group ${chat.isUnread
+                                            className={`p-3 sm:p-4 rounded-2xl border transition-all cursor-pointer relative group ${chat.isUnread
                                                 ? 'bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20'
                                                 : 'bg-gray-800/40 border-gray-700/50 hover:bg-gray-800 hover:border-blue-500/30'
                                                 }`}
                                         >
-                                            <div className="flex items-center gap-4">
-                                                <img src={chat.product?.image} className="w-14 h-14 rounded-xl object-cover border border-gray-700 shadow-sm" alt="p" />
+                                            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                                                <img src={chat.product?.image} className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-xl object-cover border border-gray-700 shadow-sm" alt="p" />
                                                 <div className="flex-1 overflow-hidden">
-                                                    <h4 className="text-sm font-bold text-gray-100 truncate">{chat.product?.title}</h4>
-                                                    <p className="text-xs text-blue-400 font-bold truncate mt-0.5">Buyer: <span className="text-gray-300 font-semibold">{chat.buyer?.name}</span></p>
-                                                    <p className="text-[11px] text-gray-500 italic truncate mt-1">
+                                                    <h4 className="text-xs sm:text-sm font-bold text-gray-100 truncate pr-4">{chat.product?.title}</h4>
+                                                    <p className="text-[10px] sm:text-xs text-blue-400 font-bold truncate mt-0.5">Buyer: <span className="text-gray-300 font-semibold">{chat.buyer?.name}</span></p>
+                                                    <p className="text-[10px] sm:text-[11px] text-gray-500 italic truncate mt-1">
                                                         {chat.lastMessage || "New negotiation..."}
                                                     </p>
                                                 </div>
                                             </div>
                                             {chat.isUnread && (
-                                                <div className="absolute top-4 right-4">
-                                                    <span className="relative flex h-3 w-3">
+                                                <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
+                                                    <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5">
                                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
+                                                        <span className="relative inline-flex rounded-full h-full w-full bg-emerald-500"></span>
                                                     </span>
                                                 </div>
                                             )}
@@ -206,8 +206,8 @@ const SellerDashboard = () => {
                                     ))
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-full text-center py-10">
-                                        <svg className="w-10 h-10 text-gray-700 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                                        <p className="text-gray-500 text-sm font-medium">No new inquiries.</p>
+                                        <svg className="w-8 h-8 text-gray-700 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                                        <p className="text-gray-500 text-xs sm:text-sm font-medium">No new inquiries.</p>
                                     </div>
                                 )}
                             </div>
