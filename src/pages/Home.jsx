@@ -69,7 +69,7 @@ const Home = () => {
                         onClick={() => navigate('/login')}
                         className="px-10 py-4 text-base font-bold text-gray-200 bg-gray-900 border border-gray-700 rounded-full hover:bg-gray-800 hover:border-gray-600 transition-all hover:-translate-y-1 active:scale-95"
                     >
-                        Sign In to Trade
+                        Already have an account
                     </button>
                 </div>
             </main>
