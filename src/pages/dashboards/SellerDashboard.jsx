@@ -90,7 +90,7 @@ const SellerDashboard = () => {
             <div className="max-w-7xl mx-auto relative z-10 overflow-y-auto">
                 <header className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
                     <div>
-                        <h1 className="text-3xl font-black text-gray-100 tracking-tight">Seller Hub</h1>
+                        <h1 className="text-3xl font-black text-gray-100 tracking-tight">Seller Account</h1>
                         <p className="text-gray-400 mt-1 font-medium">Manage your shop, <span className="text-blue-400">{user?.name}</span>.</p>
                     </div>
 
