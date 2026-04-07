@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchProductById } from '../../features/products/productSlice';
+import { fetchProductById, deleteProduct, updateProduct } from '../../features/products/productSlice';
 import { addToCart } from '../../features/cart/cartSlice';
 import Swal from 'sweetalert2';
 
@@ -20,6 +20,8 @@ const ProductDetails = () => {
 
     const isInCart = cartItems.some(item => (item._id || item) === id);
 
+    const isOwner = user?.role === 'seller' && (product?.seller?._id === user?._id || product?.seller === user?._id);
+
     const handleAddToCart = () => {
         if (!user) {
             Swal.fire({
@@ -29,9 +31,7 @@ const ProductDetails = () => {
                 background: '#111827',
                 color: '#f3f4f6',
                 confirmButtonColor: '#2563eb',
-                customClass: {
-                    popup: 'border border-gray-800 rounded-2xl shadow-2xl',
-                }
+                customClass: { popup: 'border border-gray-800 rounded-2xl shadow-2xl' }
             });
             return navigate('/login');
         }
@@ -47,9 +47,7 @@ const ProductDetails = () => {
             timer: 1500,
             toast: true,
             position: 'bottom-end',
-            customClass: {
-                popup: 'border border-gray-800 rounded-xl shadow-2xl',
-            }
+            customClass: { popup: 'border border-gray-800 rounded-xl shadow-2xl' }
         });
     };
 
@@ -62,13 +60,65 @@ const ProductDetails = () => {
                 background: '#111827',
                 color: '#f3f4f6',
                 confirmButtonColor: '#2563eb',
-                customClass: {
-                    popup: 'border border-gray-800 rounded-2xl shadow-2xl',
-                }
+                customClass: { popup: 'border border-gray-800 rounded-2xl shadow-2xl' }
             });
             return navigate('/login');
         }
         navigate(`/chat/${product.seller?._id || product.seller}/${product._id}`);
+    };
+
+    const handleEditClick = (product) => {
+        Swal.fire({
+            icon: 'success',
+            title: 'Listed!',
+            text: 'Your product is already listed.',
+            background: '#111827',
+            color: '#f3f4f6',
+            timer: 1500,
+            showConfirmButton: false
+        }).then(() => {
+            navigate(`/product/${product._id}`);
+        });
+    };
+
+    const handleDeleteClick = async (id) => {
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: "You won't be able to revert this!",
+            icon: 'warning',
+            showCancelButton: true,
+            background: '#111827',
+            color: '#f3f4f6',
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#374151',
+            confirmButtonText: 'Yes, delete it!',
+            customClass: { popup: 'border border-gray-800 rounded-2xl shadow-2xl' }
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await dispatch(deleteProduct(id)).unwrap();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Deleted!',
+                    text: 'Your product has been removed.',
+                    background: '#111827',
+                    color: '#f3f4f6',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    navigate('/dashboard/seller');
+                });
+            } catch (err) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Failed to Delete',
+                    text: err.response?.data?.error || 'Something went wrong.',
+                    background: '#111827',
+                    color: '#f3f4f6',
+                });
+            }
+        }
     };
 
     if (isLoading || !product) {
@@ -137,35 +187,73 @@ const ProductDetails = () => {
                             <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
                             Description
                         </h3>
-                        <p className="text-gray-400 leading-relaxed font-medium">{product.description || "No description provided for this item. Contact the seller for more details."}</p>
+                        <p className="text-gray-400 leading-relaxed font-medium">{product.description || "No description provided for this item."}</p>
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-4 mt-auto">
-                        <button
-                            onClick={handleAddToCart}
-                            disabled={isInCart}
-                            className={`flex-1 py-4 px-6 rounded-2xl font-black transition-all flex items-center justify-center gap-2 border-2 
-                                ${isInCart
-                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 cursor-not-allowed'
-                                    : 'bg-transparent border-gray-700 text-gray-300 hover:border-gray-500 hover:text-white hover:bg-gray-800 active:scale-95'
-                                }`}
-                        >
-                            {isInCart ? (
-                                <><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"></path></svg> Saved to Interests</>
-                            ) : (
-                                <><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"></path></svg> Save to Interests</>
-                            )}
-                        </button>
+                        {isOwner ? (
+                            <>
+                                <button
+                                    onClick={() => handleEditClick(product)
+                                    }
+                                    className="flex-1 py-4 px-6 rounded-2xl font-black transition-all flex items-center justify-center gap-2 border-2 bg-transparent border-gray-700 text-gray-300 hover:border-gray-400 hover:text-white hover:bg-gray-800 active:scale-95"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                    </svg>
+                                    Listed Product
+                                </button>
+                                <button
+                                    onClick={() => handleDeleteClick(product._id, console.log(product._id))}
+                                    className="flex-1 py-4 px-6 bg-red-600/10 border-2 border-red-600/50 text-red-500 rounded-2xl font-black hover:bg-red-600 hover:border-red-600 hover:text-white transition-all active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    Remove Listing
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={handleAddToCart}
+                                    disabled={isInCart}
+                                    className={`flex-1 py-4 px-6 rounded-2xl font-black transition-all flex items-center justify-center gap-2 border-2 
+                                        ${isInCart
+                                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 cursor-not-allowed'
+                                            : 'bg-transparent border-gray-700 text-gray-300 hover:border-gray-500 hover:text-white hover:bg-gray-800 active:scale-95'
+                                        }`}
+                                >
+                                    {isInCart ? (
+                                        <><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"></path></svg> Saved to Interests</>
+                                    ) : (
+                                        <><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"></path></svg> Save to Interests</>
+                                    )}
+                                </button>
 
-                        <button
-                            onClick={handleBuyNow}
-                            className="flex-1 py-4 px-6 bg-blue-600 border-2 border-blue-600 text-white rounded-2xl font-black hover:bg-blue-500 hover:border-blue-500 transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] active:scale-95 flex items-center justify-center gap-2"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-                            Start Negotiation
-                        </button>
+                                <button
+                                    onClick={handleBuyNow}
+                                    className="flex-1 py-4 px-6 bg-blue-600 border-2 border-blue-600 text-white rounded-2xl font-black hover:bg-blue-500 hover:border-blue-500 transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                                    Start Negotiation
+                                </button>
+                            </>
+                        )}
                     </div>
-
                     <div className="mt-8 flex flex-wrap items-center gap-6 text-xs text-gray-500 font-bold uppercase tracking-widest border-t border-gray-800 pt-6">
                         <div className="flex items-center gap-2">
                             <span className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center"><svg className="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>
