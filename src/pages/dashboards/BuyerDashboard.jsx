@@ -87,7 +87,7 @@ const BuyerDashboard = () => {
                 <header className="mb-8 flex flex-row items-center justify-between gap-4">
                     <div className="max-w-[60%]">
                         <h1 className="text-2xl sm:text-3xl font-black text-gray-100 tracking-tight">Buyer Account</h1>
-                        <p className="text-gray-400 mt-1 font-medium text-sm sm:text-base line-clamp-1">Hi, <span className="text-blue-400">{user?.name}</span></p>
+                        <p className="text-gray-400 mt-1 font-medium text-sm sm:text-base line-clamp-1">Hello, <span className="text-blue-400">{user?.name}</span></p>
                     </div>
 
                     <div className="flex items-center gap-3 sm:gap-4">
