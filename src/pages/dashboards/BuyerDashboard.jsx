@@ -141,7 +141,7 @@ const BuyerDashboard = () => {
                             <p className="text-gray-500 mb-6 text-xs sm:text-sm truncate w-full px-2">{user?.email}</p>
 
                             <button onClick={() => navigate('/products/marketplace')} className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] active:scale-95 text-sm sm:text-base">
-                                Go to Marketplace
+                                Go to Marketplace Hub
                             </button>
                         </div>
 
