@@ -1,13 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
-// export const fetchChatHistory = createAsyncThunk(
-//     'chat/fetchHistory',
-//     async ({ otherUserId, productId }) => {
-//         const response = await api.get(`/chat/${otherUserId}/${productId}`);
-//         return response.data;
-//     }
-// );
 export const fetchChatHistory = createAsyncThunk(
     'chat/fetchHistory',
     async ({ otherUserId, productId }, { rejectWithValue }) => {
@@ -35,11 +28,22 @@ export const fetchAllConversations = createAsyncThunk(
 export const sendMessage = createAsyncThunk(
     'chat/sendMessage',
     async (messageData) => {
-        const response = await api.post('/chat/send', messageData);
+        const response = await api.post('/chat/send',);
         return response.data;
     }
 );
 
+export const deleteChat = createAsyncThunk(
+    'chat/delete',
+    async ({ otherUserId, productId }, { rejectWithValue }) => {
+        try {
+            const response = await api.delete(`/chat/${otherUserId}/${productId}`);
+            return { otherUserId, productId };
+        } catch (err) {
+            return rejectWithValue(err.response?.data || "Failed to delete chat");
+        }
+    }
+);
 const chatSlice = createSlice({
     name: 'chat',
     initialState: {
@@ -59,13 +63,11 @@ const chatSlice = createSlice({
         handleNewInquiry: (state, action) => {
             const newMessage = action.payload;
 
-            // 🚩 Empty Data Guard: Agar message mein product details nahi hain, toh discard karo
             if (!newMessage.product || !newMessage.buyer) return;
 
             const pIdIncoming = (newMessage.product?._id || newMessage.product).toString();
             const bIdIncoming = (newMessage.buyer?._id || newMessage.buyer).toString();
 
-            // 🚩 Robust Unique Check
             const existingIndex = state.conversations.findIndex(c => {
                 const pId = (c.product?._id || c.product).toString();
                 const bId = (c.buyer?._id || c.buyer).toString();
@@ -79,11 +81,9 @@ const chatSlice = createSlice({
             };
 
             if (existingIndex !== -1) {
-                // Purani duplicate entry hatao
                 state.conversations.splice(existingIndex, 1);
             }
 
-            // Hamesha top par push karo
             state.conversations = [updatedInquiry, ...state.conversations];
             state.unreadCount = state.conversations.filter(c => c.isUnread).length;
         },
@@ -123,7 +123,27 @@ const chatSlice = createSlice({
                 if (!exists) {
                     state.messages.push(action.payload);
                 }
+            })
+            .addCase(deleteChat.pending, (state) => {
+                state.isLoading = true;
+            })
+            .addCase(deleteChat.fulfilled, (state, action) => {
+                state.isLoading = false;
+                const { otherUserId, productId } = action.payload;
+
+                state.messages = [];
+
+                state.conversations = state.conversations.filter(chat => {
+                    const isTargetChat =
+                        (chat.seller._id === otherUserId || chat.buyer._id === otherUserId) &&
+                        chat.product._id === productId;
+                    return !isTargetChat;
+                });
+            })
+            .addCase(deleteChat.rejected, (state) => {
+                state.isLoading = false;
             });
+
     },
 });
 
