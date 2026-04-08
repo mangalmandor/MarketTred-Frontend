@@ -20,6 +20,7 @@ export const fetchChatHistory = createAsyncThunk(
             return response.data;
         } catch (err) {
             return rejectWithValue(err.response.data);
+
         }
     }
 );
@@ -28,7 +29,7 @@ export const fetchAllConversations = createAsyncThunk(
     async () => {
         const response = await api.get('/chat/conversations');
         return response.data;
-    }
+    },
 );
 
 export const sendMessage = createAsyncThunk(

@@ -37,6 +37,22 @@ export const addProduct = createAsyncThunk(
     }
 );
 
+export const searchProducts = createAsyncThunk(
+    'products/searchProducts',
+    async ({ searchTerm, signal }, { rejectWithValue }) => {
+        try {
+            // Using 'api' ensures the Token and Base URL are applied
+            const response = await api.get(`/products/search?search=${searchTerm}`, { signal });
+            return response.data;
+        } catch (error) {
+            if (axios.isCancel(error)) {
+                return rejectWithValue('cancelled');
+            }
+            return rejectWithValue(error.response?.data || "Search failed");
+        }
+    }
+);
+
 export const updateProduct = createAsyncThunk(
     'products/updateProduct',
     async ({ id, productData }, { rejectWithValue }) => {
@@ -73,12 +89,20 @@ const productSlice = createSlice({
     name: 'products',
     initialState,
     reducers: {
+
+        resetSearchResults: (state) => {
+            state.items = state.allAvailableItems;
+            state.error = null;
+        },
         clearProductError: (state) => {
             state.error = null;
         },
         clearProductDetails: (state) => {
             state.currentProduct = null;
             state.sellerInfo = null;
+        },
+        clearSearch: (state) => {
+            state.items = [];
         }
     },
     extraReducers: (builder) => {
@@ -91,6 +115,7 @@ const productSlice = createSlice({
             .addCase(fetchProducts.fulfilled, (state, action) => {
                 state.isLoading = false;
                 state.items = action.payload;
+                state.allAvailableItems = action.payload;
             })
             .addCase(fetchProducts.rejected, (state, action) => {
                 state.isLoading = false;
@@ -112,6 +137,20 @@ const productSlice = createSlice({
             .addCase(fetchProductById.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.payload;
+            })
+
+            .addCase(searchProducts.pending, (state) => {
+                state.isLoading = true;
+            })
+            .addCase(searchProducts.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.items = action.payload;
+            })
+            .addCase(searchProducts.rejected, (state, action) => {
+                if (action.payload !== 'cancelled') {
+                    state.isLoading = false;
+                    state.error = action.payload;
+                }
             })
 
             // Add Product
@@ -158,5 +197,5 @@ const productSlice = createSlice({
     },
 });
 
-export const { clearProductError, clearProductDetails } = productSlice.actions;
+export const { clearProductError, clearProductDetails, clearSearch, resetSearchResults } = productSlice.actions;
 export default productSlice.reducer;

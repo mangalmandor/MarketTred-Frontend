@@ -15,7 +15,10 @@ const BuyerDashboard = () => {
     const { conversations = [], isLoading: chatsLoading } = useSelector((state) => state.chat);
 
     useEffect(() => {
-        dispatch(fetchAllConversations());
+        if (conversations?.length === 0) {
+
+            dispatch(fetchAllConversations());
+        }
 
         if ("Notification" in window && Notification.permission === "default") {
             Notification.requestPermission();
@@ -80,9 +83,8 @@ const BuyerDashboard = () => {
 
     return (
         <div className="min-h-screen bg-[#050505] p-4 sm:p-6 lg:p-10 font-sans selection:bg-blue-500/30 selection:text-blue-200 relative z-0 overflow-x-hidden">
-            <div className="absolute top-[-10%] left-[-10%] w-[70vw] h-[70vw] md:w-[50vw] md:h-[50vw] bg-indigo-600/10 blur-[120px] rounded-full pointer-events-none -z-10"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] md:w-[40vw] md:h-[40vw] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none -z-10"></div>
-
+            <div className="fixed top-[-10%] left-[-10%] w-[70vw] h-[70vw] md:w-[50vw] md:h-[50vw] bg-indigo-600/10 blur-[120px] rounded-full pointer-events-none -z-10"></div>
+            <div className="fixed bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] md:w-[40vw] md:h-[40vw] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none -z-10"></div>
             <div className="max-w-6xl mx-auto relative z-10">
                 <header className="mb-8 flex flex-row items-center justify-between gap-4">
                     <div className="max-w-[60%]">

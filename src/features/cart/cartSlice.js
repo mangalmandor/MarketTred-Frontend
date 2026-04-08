@@ -28,14 +28,6 @@ const cartSlice = createSlice({
     },
     extraReducers: (builder) => {
         builder
-            .addCase('auth/logout/fulfilled', (state) => {
-                state.items = [];
-                localStorage.removeItem('cartItems');
-            })
-            .addCase('auth/login/fulfilled', (state) => {
-                state.items = [];
-                localStorage.removeItem('cartItems');
-            });
     }
 });
 

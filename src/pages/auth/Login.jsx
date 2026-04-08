@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../../features/auth/authSlice';
 import Swal from 'sweetalert2';
@@ -11,12 +11,24 @@ const Login = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
+    const { items: cartItems = [] } = useSelector((state) => state.cart || {});
+
     const handleLogin = async (e) => {
         e.preventDefault();
         setIsLoading(true);
 
         try {
             const loggedInUser = await dispatch(loginUser({ email, password })).unwrap();
+
+            if (cartItems.length > 0) {
+                try {
+                    // You will need to create this thunk in your cartSlice
+                    await dispatch(syncCartToDatabase(cartItems)).unwrap();
+                } catch (syncError) {
+                    console.error("Failed to sync cart:", syncError);
+                    // We don't stop the login if the sync fails, just log it.
+                }
+            }
 
             await Swal.fire({
                 icon: 'success',
