@@ -28,7 +28,7 @@ export const fetchAllConversations = createAsyncThunk(
 export const sendMessage = createAsyncThunk(
     'chat/sendMessage',
     async (messageData) => {
-        const response = await api.post('/chat/send',);
+        const response = await api.post('/chat/send', messageData);
         return response.data;
     }
 );
