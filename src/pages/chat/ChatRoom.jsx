@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { socket } from '../../services/socket';
 // MAKE SURE TO IMPORT deleteChat HERE 👇
-import { fetchChatHistory, sendMessage, receiveMessage, clearMessages, deleteChat } from '../../features/chat/chatSlice';
+import { fetchChatHistory, sendMessage, receiveMessage, clearMessages, deleteChat, handleNewInquiry } from '../../features/chat/chatSlice';
 import { fetchProducts } from '../../features/products/productSlice';
 import Swal from 'sweetalert2';
 
@@ -13,6 +13,7 @@ const ChatRoom = () => {
     const dispatch = useDispatch();
     const { user } = useSelector((state) => state.auth);
     const { messages, isLoading, isSending } = useSelector((state) => state.chat);
+    console.log("🖼️ UI RENDER: Current messages in component:", messages.length); //👈
     const [newMessage, setNewMessage] = useState('');
 
     const scrollRef = useRef(null);
@@ -24,24 +25,33 @@ const ChatRoom = () => {
     }, [dispatch, productId]);
 
     useEffect(() => {
+
         dispatch(fetchChatHistory({ otherUserId, productId }));
         socket.emit('joinRoom', { userId: user?._id, otherUserId, productId });
 
         const handleReceiveMessage = (message) => {
-            const incomingProductId = message.product?._id || message.product;
+            // 👈 CHANGE: Look for productId in all possible spots
+            const incomingProductId = message.productId || message.product?._id || message.product;
 
-            if (incomingProductId === productId) {
+            console.log("Checking IDs:", String(incomingProductId), "vs", String(productId));
+
+            if (incomingProductId && String(incomingProductId) === String(productId)) {
                 dispatch(receiveMessage(message));
+            } else {
+                // If it's for a different book/product, show the notification instead
+                dispatch(handleNewInquiry(message));
             }
         };
 
         socket.on('receiveMessage', handleReceiveMessage);
+        socket.on('new_inquiry', (data) => dispatch(handleNewInquiry(data)));
 
         return () => {
             socket.off('receiveMessage', handleReceiveMessage);
+            socket.off('new_inquiry');
             dispatch(clearMessages());
         };
-    }, [dispatch, otherUserId, productId, user?._id]);
+    }, [dispatch, otherUserId, productId, user?._id, socket]);
 
     useEffect(() => {
         scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -80,7 +90,6 @@ const ChatRoom = () => {
         }
     };
 
-    // 👇 FIXED AND ENHANCED DELETE LOGIC 👇
     const handleDelete = async () => {
         const result = await Swal.fire({
             title: 'Delete Chat?',
@@ -99,10 +108,7 @@ const ChatRoom = () => {
 
         if (result.isConfirmed) {
             try {
-                // Uses params directly from the URL
                 await dispatch(deleteChat({ otherUserId, productId })).unwrap();
-
-                // Go back to the dashboard/previous page after deleting
                 navigate(-1);
             } catch (error) {
                 Swal.fire({

@@ -20,15 +20,15 @@ const Login = () => {
         try {
             const loggedInUser = await dispatch(loginUser({ email, password })).unwrap();
 
-            if (cartItems.length > 0) {
-                try {
-                    // You will need to create this thunk in your cartSlice
-                    await dispatch(syncCartToDatabase(cartItems)).unwrap();
-                } catch (syncError) {
-                    console.error("Failed to sync cart:", syncError);
-                    // We don't stop the login if the sync fails, just log it.
-                }
-            }
+            // if (cartItems.length > 0) {
+            //     try {
+            //         // You will need to create this thunk in your cartSlice
+            //         await dispatch(syncCartToDatabase(cartItems)).unwrap();
+            //     } catch (syncError) {
+            //         console.error("Failed to sync cart:", syncError);
+            //         // We don't stop the login if the sync fails, just log it.
+            //     }
+            // }
 
             await Swal.fire({
                 icon: 'success',

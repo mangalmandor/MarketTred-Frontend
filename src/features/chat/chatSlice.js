@@ -54,14 +54,30 @@ const chatSlice = createSlice({
     },
     reducers: {
         receiveMessage: (state, action) => {
-            const exists = state.messages.find(m => m._id === action.payload._id);
+            // 1. Log the incoming data
+            console.log("🟡 REDUX ATTEMPT: receiveMessage fired", action.payload);
+
+            // 2. Standardize IDs (Check both _id and id)
+            const incomingId = action.payload._id || action.payload.id;
+
+            // 3. Check if it already exists to prevent double-rendering
+            const exists = state.messages.find(m => (m._id || m.id) === incomingId);
+
             if (!exists) {
-                state.messages.push(action.payload);
+                // 4. THE MAGIC: Use the spread operator to create a NEW array reference
+                // This is what forces React to re-render the UI immediately
+                state.messages = [...state.messages, action.payload];
+
+                console.log("🟢 REDUX SUCCESS: New count:", state.messages.length);
+            } else {
+                console.warn("🟠 REDUX SKIP: Duplicate message detected.");
             }
         },
 
         handleNewInquiry: (state, action) => {
+            console.log("RAW SOCKET DATA RECEIVED:", action.payload);
             const newMessage = action.payload;
+            console.log("RAW SOCKET DATA RECEIVED:", action.payload);
 
             if (!newMessage.product || !newMessage.buyer) return;
 
