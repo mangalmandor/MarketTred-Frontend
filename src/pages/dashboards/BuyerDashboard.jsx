@@ -80,7 +80,7 @@ const BuyerDashboard = () => {
                     }
                 });
 
-                navigate('/login');
+                navigate('/');
             } catch (error) {
                 console.error('Logout failed', error);
                 Swal.fire({

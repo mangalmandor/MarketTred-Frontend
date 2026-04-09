@@ -27,9 +27,31 @@ const AdminDashboard = () => {
         if (result.isConfirmed) {
             try {
                 await dispatch(logoutUser()).unwrap();
+                await Swal.fire({
+                    title: 'Successfully Logged Out',
+                    icon: 'success',
+                    background: '#111827',
+                    color: '#f3f4f6',
+                    showConfirmButton: false,
+                    timer: 1500,
+                    customClass: {
+                        popup: 'border border-gray-800 rounded-2xl shadow-2xl',
+                    }
+                });
                 navigate('/');
             } catch (error) {
                 console.error('Logout failed', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to log out. Please try again.',
+                    icon: 'error',
+                    background: '#111827',
+                    color: '#f3f4f6',
+                    confirmButtonColor: '#ef4444',
+                    customClass: {
+                        popup: 'border border-gray-800 rounded-2xl shadow-2xl',
+                    }
+                });
             }
         }
     };
