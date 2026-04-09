@@ -74,67 +74,6 @@ const chatSlice = createSlice({
             }
         },
 
-        // handleNewInquiry: (state, action) => {
-        //     const newMessage = action.payload;
-        //     if (!newMessage) return;
-
-        //     // 1. Incoming IDs ko safely nikaalo (String conversion is key)
-        //     const pIdIncoming = (newMessage.product?._id || newMessage.product || "").toString();
-        //     const bIdIncoming = (newMessage.buyer?._id || newMessage.buyer || "").toString();
-
-        //     // 2. Purani list ko filter karo taaki duplicate remove ho jaye
-        //     const filteredConversations = state.conversations.filter(c => {
-        //         const pId = (c.product?._id || c.product || "").toString();
-        //         const bId = (c.buyer?._id || c.buyer || "").toString();
-
-        //         // Agar IDs match nahi karte, toh use list mein rehne do
-        //         return !(pId === pIdIncoming && bId === bIdIncoming);
-        //     });
-
-        //     // 3. Naya Inquiry object tayyar karo
-        //     const updatedInquiry = {
-        //         ...newMessage,
-        //         isUnread: true, // 👈 Green dot isi par chalta hai
-        //         lastMessage: newMessage.content || newMessage.lastMessage,
-        //         updatedAt: new Date().toISOString() // 👈 Sorting ke liye
-        //     };
-
-        //     // 4. THE TRIGGER: Naya array reference create karo
-        //     // Isse React Sidebar ko "Signal" milega ki data change hua hai
-        //     state.conversations = [updatedInquiry, ...filteredConversations];
-
-        //     // 5. Unread Count recalculate karo
-        //     state.unreadCount = state.conversations.filter(c => c.isUnread).length;
-        // },
-
-        // handleNewInquiry: (state, action) => {
-        //     const newMessage = action.payload;
-        //     if (!newMessage) return;
-
-        //     const pIdIncoming = (newMessage.product?._id || newMessage.product || "").toString();
-        //     const bIdIncoming = (newMessage.buyer?._id || newMessage.buyer || "").toString();
-
-        //     // 1. Purani list ko filter karo
-        //     const filtered = state.conversations.filter(c => {
-        //         const pId = (c.product?._id || c.product || "").toString();
-        //         const bId = (c.buyer?._id || c.buyer || "").toString();
-        //         return !(pId === pIdIncoming && bId === bIdIncoming);
-        //     });
-
-        //     // 2. Naya object tayyar karo
-        //     const updatedChat = {
-        //         ...newMessage,
-        //         isUnread: true,
-        //         updatedAt: new Date().toISOString()
-        //     };
-
-        //     // 3. 👈 THE FIX: Direct assignment with a fresh array
-        //     // Isse React ka 'Selector' force-trigger hoga
-        //     state.conversations = [updatedChat, ...filtered];
-
-        //     // 4. State ko mutate mat karo, naya count calculate karo
-        //     state.unreadCount = state.conversations.filter(c => c.isUnread).length;
-        // },
 
         handleNewInquiry: (state, action) => {
             const newMessage = action.payload;
@@ -185,20 +124,34 @@ const chatSlice = createSlice({
         },
 
         markAsRead: (state, action) => {
+            // 1. Data nikalo (User kisi bhi Dashboard se kuch bhi pass kare)
             const { productId, buyerId } = action.payload;
-            const convo = state.conversations.find(c =>
-                (c.product?._id || c.product).toString() === productId.toString() &&
-                (c.buyer?._id || c.buyer).toString() === buyerId.toString()
-            );
-            if (convo) {
-                convo.isUnread = false;
-                state.unreadCount = state.conversations.filter(c => c.isUnread).length;
-            }
-        },
 
+            const pIdToMatch = String(productId?._id || productId);
+            // Hume nahi pata dashboard ne buyer bheja hai ya seller, bas ID nikal lo
+            const userToMatch = String(buyerId?._id || buyerId);
+
+            // 2. 👈 THE MAGIC: Hum find() ki jagah map() use karenge!
+            // map() hamesha naya array (Naya Dabba) banata hai, toh React 100% re-render hoga
+            state.conversations = state.conversations.map(c => {
+                const cProduct = String(c.product?._id || c.product);
+                const cBuyer = String(c.buyer?._id || c.buyer);
+                const cSeller = String(c.seller?._id || c.seller); // Seller id bhi check karenge
+
+                // Agar Product match ho jaye, AUR (Buyer ya Seller mein se koi ek ID match ho jaye)
+                if (cProduct === pIdToMatch && (cBuyer === userToMatch || cSeller === userToMatch)) {
+                    return { ...c, isUnread: false }; // 👈 Naya Object reference! Green dot gayab!
+                }
+
+                return c; // Agar match na ho toh waise hi rehne do
+            });
+
+            // 3. Count update kar do
+            state.unreadCount = state.conversations.filter(c => c.isUnread).length;
+        },
         clearMessages: (state) => {
-            state.messages = [];
-        }
+            state.messages = []; // Ya jo bhi tumhara state clear karne ka logic ho
+        },
     },
     extraReducers: (builder) => {
         builder

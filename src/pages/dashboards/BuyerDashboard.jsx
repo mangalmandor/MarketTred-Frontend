@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../features/auth/authSlice';
-import { fetchAllConversations, handleNewInquiry } from '../../features/chat/chatSlice';
+import { fetchAllConversations, handleNewInquiry, markAsRead } from '../../features/chat/chatSlice';
 import { socket } from '../../services/socket';
 import Swal from 'sweetalert2';
 
@@ -98,10 +98,18 @@ const BuyerDashboard = () => {
         }
     };
 
-    const goToChat = (seller, product) => {
-        const sId = seller?._id || seller;
-        const pId = product?._id || product;
+    const goToChat = (chat) => {
+        // Teeno IDs direct chat dabe (box) se nikaalo
+        const sId = chat.seller?._id || chat.seller;
+        const pId = chat.product?._id || chat.product;
+        const bId = chat.buyer?._id || chat.buyer; // 👈 Ye 100% Redux se match karegi
+
         if (!sId || !pId) return;
+
+        // Ab Redux ko exact wahi ID do jo dabe mein hai
+        dispatch(markAsRead({ productId: pId, buyerId: bId }));
+
+        // Fir navigate karo
         navigate(`/chat/${sId}/${pId}`);
     };
 
@@ -202,7 +210,7 @@ const BuyerDashboard = () => {
                                     {conversations.map((chat) => (
                                         <div
                                             key={chat._id || `${chat.product?._id}-${chat.sender?._id}`}
-                                            onClick={() => goToChat(chat.seller, chat.product)}
+                                            onClick={() => goToChat(chat)}
                                             className={`flex items-center justify-between p-4 sm:p-5 rounded-2xl border cursor-pointer transition-all group ${chat.isUnread
                                                 ? 'bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20'
                                                 : 'bg-gray-800/40 border-gray-700/50 hover:bg-gray-800 hover:border-blue-500/30'

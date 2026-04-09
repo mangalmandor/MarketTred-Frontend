@@ -25,7 +25,7 @@ const SellerDashboard = () => {
     const validConversations = useMemo(() => {
         return conversations.filter(c => c.product && c.buyer);
     }, [conversations]);
-    console.log(validConversations.length);
+    // console.log(validConversations.length);
 
     const notificationCount = useMemo(() => {
         return conversations.filter(c => c.isUnread).length;

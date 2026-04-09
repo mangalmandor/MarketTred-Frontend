@@ -13,7 +13,7 @@ const ChatRoom = () => {
     const dispatch = useDispatch();
     const { user } = useSelector((state) => state.auth);
     const { messages, isLoading, isSending } = useSelector((state) => state.chat);
-    console.log("🖼️ UI RENDER: Current messages in component:", messages.length); //👈
+    // console.log("🖼️ UI RENDER: Current messages in component:", messages.length); //👈
     const [newMessage, setNewMessage] = useState('');
 
     const scrollRef = useRef(null);
@@ -33,7 +33,7 @@ const ChatRoom = () => {
             // 👈 CHANGE: Look for productId in all possible spots
             const incomingProductId = message.productId || message.product?._id || message.product;
 
-            console.log("Checking IDs:", String(incomingProductId), "vs", String(productId));
+            // console.log("Checking IDs:", String(incomingProductId), "vs", String(productId));
 
             if (incomingProductId && String(incomingProductId) === String(productId)) {
                 dispatch(receiveMessage(message));
