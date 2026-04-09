@@ -74,33 +74,113 @@ const chatSlice = createSlice({
             }
         },
 
+        // handleNewInquiry: (state, action) => {
+        //     const newMessage = action.payload;
+        //     if (!newMessage) return;
+
+        //     // 1. Incoming IDs ko safely nikaalo (String conversion is key)
+        //     const pIdIncoming = (newMessage.product?._id || newMessage.product || "").toString();
+        //     const bIdIncoming = (newMessage.buyer?._id || newMessage.buyer || "").toString();
+
+        //     // 2. Purani list ko filter karo taaki duplicate remove ho jaye
+        //     const filteredConversations = state.conversations.filter(c => {
+        //         const pId = (c.product?._id || c.product || "").toString();
+        //         const bId = (c.buyer?._id || c.buyer || "").toString();
+
+        //         // Agar IDs match nahi karte, toh use list mein rehne do
+        //         return !(pId === pIdIncoming && bId === bIdIncoming);
+        //     });
+
+        //     // 3. Naya Inquiry object tayyar karo
+        //     const updatedInquiry = {
+        //         ...newMessage,
+        //         isUnread: true, // 👈 Green dot isi par chalta hai
+        //         lastMessage: newMessage.content || newMessage.lastMessage,
+        //         updatedAt: new Date().toISOString() // 👈 Sorting ke liye
+        //     };
+
+        //     // 4. THE TRIGGER: Naya array reference create karo
+        //     // Isse React Sidebar ko "Signal" milega ki data change hua hai
+        //     state.conversations = [updatedInquiry, ...filteredConversations];
+
+        //     // 5. Unread Count recalculate karo
+        //     state.unreadCount = state.conversations.filter(c => c.isUnread).length;
+        // },
+
+        // handleNewInquiry: (state, action) => {
+        //     const newMessage = action.payload;
+        //     if (!newMessage) return;
+
+        //     const pIdIncoming = (newMessage.product?._id || newMessage.product || "").toString();
+        //     const bIdIncoming = (newMessage.buyer?._id || newMessage.buyer || "").toString();
+
+        //     // 1. Purani list ko filter karo
+        //     const filtered = state.conversations.filter(c => {
+        //         const pId = (c.product?._id || c.product || "").toString();
+        //         const bId = (c.buyer?._id || c.buyer || "").toString();
+        //         return !(pId === pIdIncoming && bId === bIdIncoming);
+        //     });
+
+        //     // 2. Naya object tayyar karo
+        //     const updatedChat = {
+        //         ...newMessage,
+        //         isUnread: true,
+        //         updatedAt: new Date().toISOString()
+        //     };
+
+        //     // 3. 👈 THE FIX: Direct assignment with a fresh array
+        //     // Isse React ka 'Selector' force-trigger hoga
+        //     state.conversations = [updatedChat, ...filtered];
+
+        //     // 4. State ko mutate mat karo, naya count calculate karo
+        //     state.unreadCount = state.conversations.filter(c => c.isUnread).length;
+        // },
+
         handleNewInquiry: (state, action) => {
-            console.log("RAW SOCKET DATA RECEIVED:", action.payload);
             const newMessage = action.payload;
-            console.log("RAW SOCKET DATA RECEIVED:", action.payload);
+            if (!newMessage) return;
 
-            if (!newMessage.product || !newMessage.buyer) return;
+            // 1. Incoming IDs ko safely nikaalo (Backend kabhi 'sender' bhejta hai, kabhi 'buyer')
+            const pIdIncoming = (newMessage.product?._id || newMessage.product || newMessage.productId || "").toString();
+            const bIdIncoming = (newMessage.buyer?._id || newMessage.buyer || newMessage.sender?._id || newMessage.sender || "").toString();
 
-            const pIdIncoming = (newMessage.product?._id || newMessage.product).toString();
-            const bIdIncoming = (newMessage.buyer?._id || newMessage.buyer).toString();
-
+            // 2. Check karo ki kya ye chat UI mein pehle se majood hai?
             const existingIndex = state.conversations.findIndex(c => {
-                const pId = (c.product?._id || c.product).toString();
-                const bId = (c.buyer?._id || c.buyer).toString();
+                const pId = (c.product?._id || c.product || "").toString();
+                const bId = (c.buyer?._id || c.buyer || "").toString();
                 return pId === pIdIncoming && bId === bIdIncoming;
             });
 
-            const updatedInquiry = {
-                ...newMessage,
-                lastMessage: newMessage.content || newMessage.lastMessage,
-                isUnread: true
-            };
+            // 3. Ek naya array banao taaki React re-render ho
+            let newConversations = [...state.conversations];
 
             if (existingIndex !== -1) {
-                state.conversations.splice(existingIndex, 1);
+                // 👈 THE MAGIC: Agar chat pehle se hai, toh uski IMAGE aur TITLE bacha kar rakho
+                const existingChat = newConversations[existingIndex];
+
+                const updatedChat = {
+                    ...existingChat, // Purana data (Image, Title) waise ka waisa rakho
+                    isUnread: true,  // 👈 Green Dot on kar do
+                    lastMessage: newMessage.content || newMessage.lastMessage || existingChat.lastMessage,
+                    updatedAt: new Date().toISOString()
+                };
+
+                // Purani jagah se nikalo aur list mein sabse UPAR (Top) daal do
+                newConversations.splice(existingIndex, 1);
+                newConversations.unshift(updatedChat);
+            } else {
+                // Agar bilkul nayi chat hai
+                const updatedChat = {
+                    ...newMessage,
+                    isUnread: true,
+                    lastMessage: newMessage.content || newMessage.lastMessage,
+                    updatedAt: new Date().toISOString()
+                };
+                newConversations.unshift(updatedChat);
             }
 
-            state.conversations = [updatedInquiry, ...state.conversations];
+            // 4. Finally state update kar do
+            state.conversations = newConversations;
             state.unreadCount = state.conversations.filter(c => c.isUnread).length;
         },
 
@@ -130,8 +210,27 @@ const chatSlice = createSlice({
                 state.messages = action.payload;
             })
             .addCase(fetchAllConversations.fulfilled, (state, action) => {
-                // 🚩 Filter out any broken conversations from backend
-                state.conversations = action.payload.filter(c => c.product && c.buyer);
+                state.isLoading = false;
+
+                // 1. Tumhara logic: Pehle broken chats ko filter kar lo
+                const validFreshChats = action.payload.filter(c => c.product && c.buyer);
+
+                // 2. Naya logic: Ab in fresh chats mein purane Green Dots (isUnread) wapas lagao
+                state.conversations = validFreshChats.map(freshChat => {
+                    // Purani list mein chat dhoondo
+                    const oldChat = state.conversations.find(c =>
+                        (c.product?._id || c.product) === (freshChat.product?._id || freshChat.product) &&
+                        (c.buyer?._id || c.buyer) === (freshChat.buyer?._id || freshChat.buyer)
+                    );
+
+                    // Agar us par pehle se green dot tha, toh naye wale par bhi laga do
+                    if (oldChat && oldChat.isUnread) {
+                        return { ...freshChat, isUnread: true };
+                    }
+                    return freshChat;
+                });
+
+                // 3. Bell count update kar do
                 state.unreadCount = state.conversations.filter(c => c.isUnread).length;
             })
             .addCase(sendMessage.fulfilled, (state, action) => {

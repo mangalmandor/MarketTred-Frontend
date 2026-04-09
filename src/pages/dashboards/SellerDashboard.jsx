@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../features/auth/authSlice';
@@ -12,15 +12,24 @@ const SellerDashboard = () => {
     const navigate = useNavigate();
 
     const { user } = useSelector((state) => state.auth);
-    const { conversations = [] } = useSelector((state) => state.chat);
+    const { conversations } = useSelector((state) => state.chat);
     const { items: allProducts = [], isLoading: productsLoading } = useSelector((state) => state.products);
 
+    // Filter Seller's own products
     const myProducts = allProducts.filter(product =>
         (product.seller?._id || product.seller) === user?._id
     );
 
-    const validConversations = conversations.filter(c => c.product && c.buyer && c.product.image);
-    const notificationCount = validConversations.filter(c => c.isUnread).length;
+    // 👈 LIVE UPDATE LOGIC: useMemo forces React to re-calculate and re-render the list 
+    // immediately whenever the Redux 'conversations' array changes.
+    const validConversations = useMemo(() => {
+        return conversations.filter(c => c.product && c.buyer);
+    }, [conversations]);
+    console.log(validConversations.length);
+
+    const notificationCount = useMemo(() => {
+        return conversations.filter(c => c.isUnread).length;
+    }, [conversations]);
 
     useEffect(() => {
         dispatch(fetchAllConversations());
@@ -31,12 +40,16 @@ const SellerDashboard = () => {
         }
 
         const onNewInquiry = (data) => {
+            console.log("🔔 Socket Hit! Data received:", data);
+
+            // Khud ke messages par bell/notification mat bajao
+            if (data.sender?._id === user?._id || data.sender === user?._id) return;
+
+            // Ye dispatch chatSlice ko hit karega aur naya array banayega
             dispatch(handleNewInquiry(data));
 
-            try {
-                const audio = new Audio('/notification-sound.mp3');
-                audio.play().catch(() => console.log("Autoplay blocked"));
-            } catch (err) { console.log(err); }
+            const audio = new Audio('/notification-sound.mp3');
+            audio.play().catch(() => console.log("Autoplay blocked"));
 
             if ("Notification" in window && Notification.permission === "granted") {
                 const senderName = data.buyer?.name || "Buyer";
@@ -47,9 +60,27 @@ const SellerDashboard = () => {
             }
         };
 
-        socket.on('new_inquiry', onNewInquiry);
-        return () => socket.off('new_inquiry', onNewInquiry);
-    }, [dispatch]);
+        if (socket) {
+            socket.on('new_inquiry', onNewInquiry);
+        }
+
+        return () => {
+            if (socket) socket.off('new_inquiry', onNewInquiry);
+        };
+        // 👈 Added user?._id to dependencies so the "self-message" check never uses stale data
+    }, [dispatch, socket, user?._id]);
+    useEffect(() => {
+        // Check karo: Kya Redux list mein aisi koi chat hai jisme product ki image ya title nahi hai?
+        // (Aisa tabhi hota hai jab socket se ekdum nayi chat aati hai)
+        const hasIncompleteChat = conversations.some(c =>
+            typeof c.product === 'string' || !c.product?.image || !c.product?.title
+        );
+
+        // Agar incomplete chat mili, toh chupke se background mein API call karke photo/title mangwa lo
+        if (hasIncompleteChat) {
+            dispatch(fetchAllConversations());
+        }
+    }, [conversations, dispatch]);
 
     const handleLogout = async () => {
         const result = await Swal.fire({
@@ -96,7 +127,6 @@ const SellerDashboard = () => {
                     }
                 });
             }
-
         }
     };
 

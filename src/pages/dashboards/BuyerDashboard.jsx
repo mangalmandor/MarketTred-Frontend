@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../features/auth/authSlice';
@@ -13,6 +13,7 @@ const BuyerDashboard = () => {
     const { user } = useSelector((state) => state.auth);
     const { items: cartItems = [] } = useSelector((state) => state.cart || {});
     const { conversations = [], isLoading: chatsLoading } = useSelector((state) => state.chat);
+    const notificationCount = conversations.filter(c => c.isUnread === true).length;
 
     useEffect(() => {
         if (conversations?.length === 0) {
@@ -46,7 +47,6 @@ const BuyerDashboard = () => {
         };
     }, [dispatch]);
 
-    const notificationCount = conversations.filter(c => c.isUnread === true).length;
 
     const handleLogout = async () => {
         const result = await Swal.fire({

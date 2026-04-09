@@ -26,7 +26,7 @@ export const fetchProductById = createAsyncThunk(
 );
 
 export const addProduct = createAsyncThunk(
-    'products/addProduct',
+    'products/addProduct',  
     async (productData, { rejectWithValue }) => {
         try {
             const response = await api.post('/products', productData);
