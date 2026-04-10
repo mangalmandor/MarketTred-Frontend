@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../features/auth/authSlice';
@@ -6,6 +6,7 @@ import { fetchAllConversations, handleNewInquiry, markAsRead } from '../../featu
 import { fetchProducts } from '../../features/products/productSlice';
 import { socket } from '../../services/socket';
 import Swal from 'sweetalert2';
+import Pagination from '../../components/Pagination';
 
 const SellerDashboard = () => {
     const dispatch = useDispatch();
@@ -15,17 +16,43 @@ const SellerDashboard = () => {
     const { conversations } = useSelector((state) => state.chat);
     const { items: allProducts = [], isLoading: productsLoading } = useSelector((state) => state.products);
 
-    // Filter Seller's own products
+    // ✨ NAYA: Local Search State
+    const [searchQuery, setSearchQuery] = useState("");
+
+    // 1. Pehle Seller ke apne products nikaalo
     const myProducts = allProducts.filter(product =>
         (product.seller?._id || product.seller) === user?._id
     );
 
-    // 👈 LIVE UPDATE LOGIC: useMemo forces React to re-calculate and re-render the list 
-    // immediately whenever the Redux 'conversations' array changes.
+    // 2. ✨ NAYA SEARCH FILTER: Jo user type karega, uske hisaab se filter karo
+    const filteredMyProducts = myProducts.filter(product =>
+        product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // 3. Frontend Pagination Logic (Ab 'filteredMyProducts' par chalega)
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 6;
+
+    const totalPages = Math.ceil(filteredMyProducts.length / itemsPerPage);
+    const currentProducts = filteredMyProducts.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    const handlePageChange = (newPage) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            setCurrentPage(newPage);
+            const container = document.getElementById('products-scroll-container');
+            if (container) {
+                container.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+    };
+
     const validConversations = useMemo(() => {
         return conversations.filter(c => c.product && c.buyer);
     }, [conversations]);
-    // console.log(validConversations.length);
 
     const notificationCount = useMemo(() => {
         return conversations.filter(c => c.isUnread).length;
@@ -33,19 +60,14 @@ const SellerDashboard = () => {
 
     useEffect(() => {
         dispatch(fetchAllConversations());
-        dispatch(fetchProducts());
+        dispatch(fetchProducts({ limit: 1000 }));
 
         if ("Notification" in window && Notification.permission === "default") {
             Notification.requestPermission();
         }
 
         const onNewInquiry = (data) => {
-            console.log("🔔 Socket Hit! Data received:", data);
-
-            // Khud ke messages par bell/notification mat bajao
             if (data.sender?._id === user?._id || data.sender === user?._id) return;
-
-            // Ye dispatch chatSlice ko hit karega aur naya array banayega
             dispatch(handleNewInquiry(data));
 
             const audio = new Audio('/notification-sound.mp3');
@@ -67,16 +89,13 @@ const SellerDashboard = () => {
         return () => {
             if (socket) socket.off('new_inquiry', onNewInquiry);
         };
-        // 👈 Added user?._id to dependencies so the "self-message" check never uses stale data
     }, [dispatch, socket, user?._id]);
+
     useEffect(() => {
-        // Check karo: Kya Redux list mein aisi koi chat hai jisme product ki image ya title nahi hai?
-        // (Aisa tabhi hota hai jab socket se ekdum nayi chat aati hai)
         const hasIncompleteChat = conversations.some(c =>
             typeof c.product === 'string' || !c.product?.image || !c.product?.title
         );
 
-        // Agar incomplete chat mili, toh chupke se background mein API call karke photo/title mangwa lo
         if (hasIncompleteChat) {
             dispatch(fetchAllConversations());
         }
@@ -93,9 +112,7 @@ const SellerDashboard = () => {
             confirmButtonColor: '#ef4444',
             cancelButtonColor: '#374151',
             confirmButtonText: 'Yes, log out',
-            customClass: {
-                popup: 'border border-gray-800 rounded-2xl shadow-2xl',
-            }
+            customClass: { popup: 'border border-gray-800 rounded-2xl shadow-2xl' }
         });
 
         if (result.isConfirmed) {
@@ -108,9 +125,7 @@ const SellerDashboard = () => {
                     color: '#f3f4f6',
                     showConfirmButton: false,
                     timer: 1500,
-                    customClass: {
-                        popup: 'border border-gray-800 rounded-2xl shadow-2xl',
-                    }
+                    customClass: { popup: 'border border-gray-800 rounded-2xl shadow-2xl' }
                 });
                 navigate('/')
             } catch (error) {
@@ -122,9 +137,7 @@ const SellerDashboard = () => {
                     background: '#111827',
                     color: '#f3f4f6',
                     confirmButtonColor: '#ef4444',
-                    customClass: {
-                        popup: 'border border-gray-800 rounded-2xl shadow-2xl',
-                    }
+                    customClass: { popup: 'border border-gray-800 rounded-2xl shadow-2xl' }
                 });
             }
         }
@@ -189,8 +202,32 @@ const SellerDashboard = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
                     <div className="lg:col-span-2 order-2 lg:order-1">
                         <div className="bg-gray-900/40 backdrop-blur-xl rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 border border-gray-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] min-h-[400px] lg:h-[600px] flex flex-col">
-                            <h2 className="text-lg sm:text-xl font-black text-gray-100 mb-6 tracking-tight">Your Live Products</h2>
-                            <div className="overflow-y-auto pr-1 sm:pr-2 flex-grow custom-scrollbar">
+
+                            {/* ✨ NAYA: Title aur Search Bar ko Flex mein daal diya */}
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                <h2 className="text-lg sm:text-xl font-black text-gray-100 tracking-tight whitespace-nowrap">Your Live Products</h2>
+
+                                {/* Search Input Container */}
+                                <div className="relative w-full sm:w-64 shrink-0">
+                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Search your items..."
+                                        value={searchQuery}
+                                        onChange={(e) => {
+                                            setSearchQuery(e.target.value);
+                                            setCurrentPage(1); // Type karte hi page 1 par reset karo
+                                        }}
+                                        className="w-full bg-gray-800/40 border border-gray-700/50 text-gray-200 text-sm rounded-xl focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 block pl-10 p-2.5 transition-all placeholder-gray-500 outline-none shadow-inner"
+                                    />
+                                </div>
+                            </div>
+
+                            <div id="products-scroll-container" className="overflow-y-auto pr-1 sm:pr-2 flex-grow custom-scrollbar">
                                 {productsLoading ? (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                         {[1, 2, 3, 4].map(n => (
@@ -201,22 +238,36 @@ const SellerDashboard = () => {
                                             </div>
                                         ))}
                                     </div>
-                                ) : myProducts.length > 0 ? (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pb-4">
-                                        {myProducts.map(product => (
-                                            <div key={product._id} className="bg-gray-800/40 rounded-2xl p-4 border border-gray-700/50 hover:bg-gray-800 hover:border-blue-500/30 cursor-pointer transition-all group" onClick={() => navigate(`/product/${product._id}`)}>
-                                                <div className="overflow-hidden rounded-xl mb-3 aspect-video sm:aspect-auto">
-                                                    <img src={product.image} className="w-full h-32 sm:h-40 object-cover transform group-hover:scale-105 transition-transform duration-500" alt="p" />
+                                ) : currentProducts.length > 0 ? (
+                                    <>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pb-4">
+                                            {currentProducts.map(product => (
+                                                <div key={product._id} className="bg-gray-800/40 rounded-2xl p-4 border border-gray-700/50 hover:bg-gray-800 hover:border-blue-500/30 cursor-pointer transition-all group" onClick={() => navigate(`/product/${product._id}`)}>
+                                                    <div className="overflow-hidden rounded-xl mb-3 aspect-video sm:aspect-auto">
+                                                        <img src={product.image} className="w-full h-32 sm:h-40 object-cover transform group-hover:scale-105 transition-transform duration-500" alt="p" />
+                                                    </div>
+                                                    <h3 className="font-bold text-gray-100 truncate text-sm sm:text-base">{product.title}</h3>
+                                                    <p className="text-blue-400 font-black tracking-wide text-sm sm:text-base">${product.price}</p>
                                                 </div>
-                                                <h3 className="font-bold text-gray-100 truncate text-sm sm:text-base">{product.title}</h3>
-                                                <p className="text-blue-400 font-black tracking-wide text-sm sm:text-base">${product.price}</p>
+                                            ))}
+                                        </div>
+
+                                        {!productsLoading && totalPages > 1 && (
+                                            <div className="mt-4 mb-2">
+                                                <Pagination
+                                                    currentPage={currentPage}
+                                                    totalPages={totalPages}
+                                                    onPageChange={handlePageChange}
+                                                />
                                             </div>
-                                        ))}
-                                    </div>
+                                        )}
+                                    </>
                                 ) : (
                                     <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-gray-800 rounded-2xl p-6">
-                                        <svg className="w-10 h-10 sm:w-12 h-12 mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                                        <p className="font-medium text-sm sm:text-base">No products listed yet.</p>
+                                        <svg className="w-10 h-10 sm:w-12 h-12 mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                        <p className="font-medium text-sm sm:text-base">
+                                            {searchQuery ? "No matching products found." : "No products listed yet."}
+                                        </p>
                                     </div>
                                 )}
                             </div>
