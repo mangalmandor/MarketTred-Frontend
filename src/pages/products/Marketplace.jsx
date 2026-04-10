@@ -1,23 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProducts } from '../../features/products/productSlice';
+// ✨ NAYA: setPage ko import kiya hai
+import { fetchProducts, setPage } from '../../features/products/productSlice';
 import { addToCart } from '../../features/cart/cartSlice';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import ProductSearch from '../../components/ProductSearch';
+// ✨ NAYA: Pagination component import kiya hai
+import Pagination from '../../components/Pagination';
 
 const Marketplace = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
-    const { items = [], isLoading, error } = useSelector((state) => state.products || {});
+    // ✨ NAYA: Redux se currentPage aur totalPages nikaala
+    const { items = [], isLoading, error, currentPage = 1, totalPages = 1 } = useSelector((state) => state.products || {});
     const cartItems = useSelector((state) => state.cart?.items || state.cart?.cartItems || []);
 
+    // ✨ NAYA: Effect ab currentPage badalne par API call karega
     useEffect(() => {
-        if (items.length === 0) {
-            dispatch(fetchProducts());
-        }
-    }, [dispatch]);
+        dispatch(fetchProducts({ page: currentPage, limit: 12 }));
+
+        // Page change hone par thoda smooth scroll top par
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [dispatch, currentPage]);
 
     const handleAddToCart = (product) => {
         const alreadyInCart = cartItems?.find(item => item._id === product._id);
@@ -42,6 +48,13 @@ const Marketplace = () => {
                 popup: 'border border-gray-800 rounded-xl shadow-2xl',
             }
         });
+    };
+
+    // ✨ NAYA: Page change handle karne ka function
+    const handlePageChange = (newPage) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            dispatch(setPage(newPage));
+        }
     };
 
     return (
@@ -105,55 +118,69 @@ const Marketplace = () => {
                         ))}
                     </div>
                 ) : items?.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-                        {items.map((product) => {
-                            const isAdded = cartItems?.some(item => item._id === product._id);
-                            return (
-                                <div key={product._id} className="group bg-gray-900/40 backdrop-blur-xl rounded-[2rem] border border-gray-800 shadow-xl hover:border-gray-700 sm:hover:-translate-y-1.5 transition-all duration-500 overflow-hidden flex flex-col h-full">
-                                    <div className="relative h-48 sm:h-56 overflow-hidden cursor-pointer border-b border-gray-800" onClick={() => navigate(`/product/${product._id}`)}>
-                                        <img
-                                            src={product.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000'}
-                                            alt={product.title}
-                                            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-out"
-                                            loading="lazy"
-                                        />
-                                        <div className="absolute top-3 left-3 bg-[#050505]/80 backdrop-blur-md border border-gray-700 px-3 py-1 rounded-full text-[9px] font-black text-gray-200 tracking-widest z-20 flex items-center gap-1.5 uppercase">
-                                            <svg className="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
-                                            {product.location || 'Online'}
+                    <>
+                        {/* Tumhara Original Product Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+                            {items.map((product) => {
+                                const isAdded = cartItems?.some(item => item._id === product._id);
+                                return (
+                                    <div key={product._id} className="group bg-gray-900/40 backdrop-blur-xl rounded-[2rem] border border-gray-800 shadow-xl hover:border-gray-700 sm:hover:-translate-y-1.5 transition-all duration-500 overflow-hidden flex flex-col h-full">
+                                        <div className="relative h-48 sm:h-56 overflow-hidden cursor-pointer border-b border-gray-800" onClick={() => navigate(`/product/${product._id}`)}>
+                                            <img
+                                                src={product.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000'}
+                                                alt={product.title}
+                                                className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-out"
+                                                loading="lazy"
+                                            />
+                                            <div className="absolute top-3 left-3 bg-[#050505]/80 backdrop-blur-md border border-gray-700 px-3 py-1 rounded-full text-[9px] font-black text-gray-200 tracking-widest z-20 flex items-center gap-1.5 uppercase">
+                                                <svg className="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
+                                                {product.location || 'Online'}
+                                            </div>
+                                        </div>
+
+                                        <div className="p-5 sm:p-6 flex flex-col flex-grow">
+                                            <h3
+                                                className="text-lg sm:text-xl font-bold text-gray-100 leading-tight line-clamp-2 tracking-tight group-hover:text-blue-400 transition-colors cursor-pointer mb-2"
+                                                onClick={() => navigate(`/product/${product._id}`)}
+                                            >
+                                                {product.title}
+                                            </h3>
+                                            <span className="text-xl sm:text-2xl font-black text-blue-400 mb-3 inline-block">${product.price}</span>
+                                            <p className="text-gray-500 text-xs sm:text-sm line-clamp-2 mb-5 font-medium flex-grow leading-relaxed">
+                                                {product.description}
+                                            </p>
+
+                                            <button
+                                                onClick={() => handleAddToCart(product)}
+                                                className={`w-full py-3 sm:py-3.5 font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 active:scale-95 mt-auto text-sm sm:text-base
+                                                    ${isAdded
+                                                        ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                                                        : 'bg-gray-800 text-gray-300 hover:bg-blue-600 hover:text-white'
+                                                    }`}
+                                            >
+                                                {isAdded ? (
+                                                    <><svg className="w-4 h-4 sm:w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"></path></svg> In Interest List</>
+                                                ) : (
+                                                    <><svg className="w-4 h-4 sm:w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"></path></svg> Add to Interests</>
+                                                )}
+                                            </button>
                                         </div>
                                     </div>
+                                );
+                            })}
+                        </div>
 
-                                    <div className="p-5 sm:p-6 flex flex-col flex-grow">
-                                        <h3
-                                            className="text-lg sm:text-xl font-bold text-gray-100 leading-tight line-clamp-2 tracking-tight group-hover:text-blue-400 transition-colors cursor-pointer mb-2"
-                                            onClick={() => navigate(`/product/${product._id}`)}
-                                        >
-                                            {product.title}
-                                        </h3>
-                                        <span className="text-xl sm:text-2xl font-black text-blue-400 mb-3 inline-block">${product.price}</span>
-                                        <p className="text-gray-500 text-xs sm:text-sm line-clamp-2 mb-5 font-medium flex-grow leading-relaxed">
-                                            {product.description}
-                                        </p>
-
-                                        <button
-                                            onClick={() => handleAddToCart(product)}
-                                            className={`w-full py-3 sm:py-3.5 font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 active:scale-95 mt-auto text-sm sm:text-base
-                                                ${isAdded
-                                                    ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
-                                                    : 'bg-gray-800 text-gray-300 hover:bg-blue-600 hover:text-white'
-                                                }`}
-                                        >
-                                            {isAdded ? (
-                                                <><svg className="w-4 h-4 sm:w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"></path></svg> In Interest List</>
-                                            ) : (
-                                                <><svg className="w-4 h-4 sm:w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"></path></svg> Add to Interests</>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                        {/* ✨ NAYA: Pagination Component Integration ✨ */}
+                        {!isLoading && totalPages > 1 && (
+                            <div className="mt-12 mb-8">
+                                <Pagination
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    onPageChange={handlePageChange}
+                                />
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <div className="text-center py-20 sm:py-32 bg-gray-900/40 backdrop-blur-xl rounded-[2rem] sm:rounded-[3rem] border border-gray-800">
                         <div className="w-16 h-16 sm:w-20 h-20 bg-gray-800/50 rounded-full flex items-center justify-center mx-auto mb-6 border border-gray-700 text-gray-600">
@@ -169,4 +196,3 @@ const Marketplace = () => {
 };
 
 export default Marketplace;
-

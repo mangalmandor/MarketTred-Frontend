@@ -1,11 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
+import axios from 'axios'; // Iski zaroorat padegi search cancel check ke liye
 
 export const fetchProducts = createAsyncThunk(
     'products/fetchProducts',
-    async (_, { rejectWithValue }) => {
+    // ✨ NAYA: Default parameters add kiye hain taaki purani bina args wali calls crash na hon
+    async ({ page = 1, limit = 12 } = {}, { rejectWithValue }) => {
         try {
-            const response = await api.get('/products');
+            // ✨ NAYA: Query parameters mein page aur limit pass kar rahe hain
+            const response = await api.get(`/products?page=${page}&limit=${limit}`);
             return response.data;
         } catch (err) {
             return rejectWithValue(err.response?.data || "Failed to fetch products");
@@ -26,7 +29,7 @@ export const fetchProductById = createAsyncThunk(
 );
 
 export const addProduct = createAsyncThunk(
-    'products/addProduct',  
+    'products/addProduct',
     async (productData, { rejectWithValue }) => {
         try {
             const response = await api.post('/products', productData);
@@ -39,10 +42,10 @@ export const addProduct = createAsyncThunk(
 
 export const searchProducts = createAsyncThunk(
     'products/searchProducts',
-    async ({ searchTerm, signal }, { rejectWithValue }) => {
+    // ✨ NAYA: search ke sath ab page aur limit bhi accept karega
+    async ({ searchTerm, page = 1, limit = 12, signal }, { rejectWithValue }) => {
         try {
-            // Using 'api' ensures the Token and Base URL are applied
-            const response = await api.get(`/products/search?search=${searchTerm}`, { signal });
+            const response = await api.get(`/products/search?search=${searchTerm}&page=${page}&limit=${limit}`, { signal });
             return response.data;
         } catch (error) {
             if (axios.isCancel(error)) {
@@ -79,17 +82,21 @@ export const deleteProduct = createAsyncThunk(
 
 const initialState = {
     items: [],
+    allAvailableItems: [], // Tumhara custom field
     currentProduct: null,
     sellerInfo: null,
     isLoading: false,
     error: null,
+    // ✨ NAYA (PAGINATION) ✨: Pagination states add kar diye
+    currentPage: 1,
+    totalPages: 1,
+    totalProducts: 0,
 };
 
 const productSlice = createSlice({
     name: 'products',
     initialState,
     reducers: {
-
         resetSearchResults: (state) => {
             state.items = state.allAvailableItems;
             state.error = null;
@@ -103,6 +110,13 @@ const productSlice = createSlice({
         },
         clearSearch: (state) => {
             state.items = [];
+        },
+        // ✨ NAYA (PAGINATION) ✨: Page control karne ke liye reducers
+        setPage: (state, action) => {
+            state.currentPage = action.payload;
+        },
+        resetPage: (state) => {
+            state.currentPage = 1;
         }
     },
     extraReducers: (builder) => {
@@ -114,15 +128,27 @@ const productSlice = createSlice({
             })
             .addCase(fetchProducts.fulfilled, (state, action) => {
                 state.isLoading = false;
-                state.items = action.payload;
-                state.allAvailableItems = action.payload;
+                // ✨ NAYA (PAGINATION SAFEGUARD) ✨
+                // Check if backend sent the new paginated object { products, totalPages... }
+                // OR if it's still sending the old plain array [ {...}, {...} ]
+                if (action.payload.products) {
+                    state.items = action.payload.products;
+                    state.allAvailableItems = action.payload.products;
+                    state.currentPage = action.payload.currentPage || 1;
+                    state.totalPages = action.payload.totalPages || 1;
+                    state.totalProducts = action.payload.totalProducts || 0;
+                } else {
+                    // Fallback for old backend logic (taaki app crash na ho)
+                    state.items = action.payload;
+                    state.allAvailableItems = action.payload;
+                }
             })
             .addCase(fetchProducts.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.payload;
             })
 
-            // Fetch Product By ID
+            // Fetch Product By ID (Untouched)
             .addCase(fetchProductById.pending, (state) => {
                 state.isLoading = true;
                 state.currentProduct = null;
@@ -139,12 +165,21 @@ const productSlice = createSlice({
                 state.error = action.payload;
             })
 
+            // Search Products
             .addCase(searchProducts.pending, (state) => {
                 state.isLoading = true;
             })
             .addCase(searchProducts.fulfilled, (state, action) => {
                 state.isLoading = false;
-                state.items = action.payload;
+                // ✨ NAYA (PAGINATION SAFEGUARD) ✨
+                if (action.payload.products) {
+                    state.items = action.payload.products;
+                    state.currentPage = action.payload.currentPage || 1;
+                    state.totalPages = action.payload.totalPages || 1;
+                    state.totalProducts = action.payload.totalProducts || 0;
+                } else {
+                    state.items = action.payload;
+                }
             })
             .addCase(searchProducts.rejected, (state, action) => {
                 if (action.payload !== 'cancelled') {
@@ -153,7 +188,7 @@ const productSlice = createSlice({
                 }
             })
 
-            // Add Product
+            // Add Product (Untouched)
             .addCase(addProduct.pending, (state) => {
                 state.isLoading = true;
             })
@@ -166,7 +201,7 @@ const productSlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Update Product
+            // Update Product (Untouched)
             .addCase(updateProduct.pending, (state) => {
                 state.isLoading = true;
             })
@@ -182,7 +217,7 @@ const productSlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Delete Product
+            // Delete Product (Untouched)
             .addCase(deleteProduct.pending, (state) => {
                 state.isLoading = true;
             })
@@ -197,5 +232,5 @@ const productSlice = createSlice({
     },
 });
 
-export const { clearProductError, clearProductDetails, clearSearch, resetSearchResults } = productSlice.actions;
+export const { clearProductError, clearProductDetails, clearSearch, resetSearchResults, setPage, resetPage } = productSlice.actions; // ✨ NAYA: setPage, resetPage export kiya hai
 export default productSlice.reducer;
