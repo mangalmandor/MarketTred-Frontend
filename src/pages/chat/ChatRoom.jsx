@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { socket } from '../../services/socket';
 // MAKE SURE TO IMPORT deleteChat HERE 👇
-import { fetchChatHistory, sendMessage, receiveMessage, clearMessages, deleteChat, handleNewInquiry } from '../../features/chat/chatSlice';
+import { fetchChatHistory, sendMessage, receiveMessage, clearMessages, deleteChat, handleNewInquiry, fetchAllConversations } from '../../features/chat/chatSlice';
 import { fetchProducts } from '../../features/products/productSlice';
 import Swal from 'sweetalert2';
 
@@ -12,7 +12,7 @@ const ChatRoom = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const { user } = useSelector((state) => state.auth);
-    const { messages, isLoading, isSending } = useSelector((state) => state.chat);
+    const { messages, isLoading, isSending, conversations } = useSelector((state) => state.chat);
     // console.log("🖼️ UI RENDER: Current messages in component:", messages.length); //👈
     const [newMessage, setNewMessage] = useState('');
 
@@ -56,6 +56,27 @@ const ChatRoom = () => {
     useEffect(() => {
         scrollRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
+
+    // Upar useSelector se conversations zarur nikal lena agar nahi nikala hai:
+    // const { conversations } = useSelector(state => state.chat);
+
+    useEffect(() => {
+        // Check karo kya is room mein message aa chuka hai (yani chat DB mein ban gayi hai)
+        if (messages && messages.length > 0) {
+
+            // Check karo kya ye chat pehle se left sidebar (conversations list) mein maujood hai?
+            const chatExists = conversations.some(c =>
+                String(c.product?._id || c.product) === String(productId) &&
+                (String(c.seller?._id || c.seller) === String(otherUserId) || String(c.buyer?._id || c.buyer) === String(otherUserId))
+            );
+
+            // Agar chat pehli baar hui hai aur sidebar mein dabba nahi hai
+            if (!chatExists) {
+                // Background mein list refresh kar lo taaki naya dabba UI mein aa jaye
+                dispatch(fetchAllConversations());
+            }
+        }
+    }, [messages.length, conversations, dispatch, productId, otherUserId]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
