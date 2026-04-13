@@ -99,7 +99,7 @@ const Marketplace = () => {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-28 sm:mt-32 relative z-10">
-                {error && (
+                {error?.message && (
                     <div className="text-center text-red-400 font-bold p-6 bg-red-500/10 border border-red-500/20 rounded-3xl mb-10">
                         {error}
                     </div>

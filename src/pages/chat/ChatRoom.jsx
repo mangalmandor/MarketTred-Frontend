@@ -43,12 +43,10 @@ const ChatRoom = () => {
             }
         };
 
-        socket.on('receiveMessage', handleReceiveMessage);
-        socket.on('new_inquiry', (data) => dispatch(handleNewInquiry(data)));
+        socket.on('receiveMessage', handleReceiveMessage);;
 
         return () => {
             socket.off('receiveMessage', handleReceiveMessage);
-            socket.off('new_inquiry');
             dispatch(clearMessages());
         };
     }, [dispatch, otherUserId, productId, user?._id, socket]);
@@ -70,7 +68,7 @@ const ChatRoom = () => {
                 (String(c.seller?._id || c.seller) === String(otherUserId) || String(c.buyer?._id || c.buyer) === String(otherUserId))
             );
 
-            // Agar chat pehli baar hui hai aur sidebar mein dabba nahi hai
+            //Agar chat pehli baar hui hai aur sidebar mein dabba nahi hai
             if (!chatExists) {
                 // Background mein list refresh kar lo taaki naya dabba UI mein aa jaye
                 dispatch(fetchAllConversations());
@@ -82,20 +80,26 @@ const ChatRoom = () => {
         e.preventDefault();
         if (!newMessage.trim() || isSending) return;
 
-        const messageData = {
-            _id: Date.now().toString(),
+        // 1. FAKE ID mat banao! Sirf zaroori data bhejo. 
+        // (_id aur createdAt backend MongoDB khud generate karega)
+        const messagePayload = {
             receiverId: otherUserId,
             productId,
             content: newMessage,
             sender: user._id,
-            createdAt: new Date().toISOString()
         };
 
-        socket.emit('sendMessage', messageData);
-
         try {
-            setNewMessage('');
-            await dispatch(sendMessage(messageData)).unwrap();
+            setNewMessage(''); // Input box turant khali kar do taaki user ko fast lage
+
+            // 2. Pehle Redux API/Backend ko call karo
+            // .unwrap() humein directly backend ka response (Saved Message with real DB _id) dega
+            const savedMessage = await dispatch(sendMessage(messagePayload)).unwrap();
+
+            // 3. Ab jab message DB mein pakka save ho gaya aur ASALI _id mil gayi, 
+            // Tab usey Socket par dusre bande ko bhej do!
+            socket.emit('sendMessage', savedMessage);
+
         } catch (error) {
             Swal.fire({
                 icon: 'error',
@@ -110,7 +114,6 @@ const ChatRoom = () => {
             });
         }
     };
-
     const handleDelete = async () => {
         const result = await Swal.fire({
             title: 'Delete Chat?',
