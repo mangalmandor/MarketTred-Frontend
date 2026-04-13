@@ -26,9 +26,6 @@ const cartSlice = createSlice({
             localStorage.removeItem('cartItems');
         }
     },
-    extraReducers: (builder) => {
-        builder
-    }
 });
 
 export const { addToCart, removeFromCart, clearCart } = cartSlice.actions;

@@ -151,6 +151,13 @@ const chatSlice = createSlice({
         },
         clearMessages: (state) => {
             state.messages = []; // Ya jo bhi tumhara state clear karne ka logic ho
+            state.conversations = [];
+
+            // 3. Reset the green dot / unread notification count
+            state.unreadCount = 0;
+
+            // 4. (Optional but good) Remove any residual storage if you ever use it
+            localStorage.removeItem('chatHistory');
         },
     },
     extraReducers: (builder) => {

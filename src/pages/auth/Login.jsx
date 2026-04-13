@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../../features/auth/authSlice';
+import { clearMessages } from '../../features/chat/chatSlice';
 import Swal from 'sweetalert2';
 
 const Login = () => {
@@ -19,16 +20,15 @@ const Login = () => {
 
         try {
             const loggedInUser = await dispatch(loginUser({ email, password })).unwrap();
+            localStorage.clear();
+            if (loggedInUser.token) {
+                localStorage.setItem('token', loggedInUser.token);
+            }
+            localStorage.setItem('user', JSON.stringify(loggedInUser));
 
-            // if (cartItems.length > 0) {
-            //     try {
-            //         // You will need to create this thunk in your cartSlice
-            //         await dispatch(syncCartToDatabase(cartItems)).unwrap();
-            //     } catch (syncError) {
-            //         console.error("Failed to sync cart:", syncError);
-            //         // We don't stop the login if the sync fails, just log it.
-            //     }
-            // }
+            dispatch({ type: 'cart/clearCart' });
+
+            dispatch(clearMessages());
 
             await Swal.fire({
                 icon: 'success',
@@ -67,7 +67,6 @@ const Login = () => {
             setIsLoading(false);
         }
     };
-
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#050505] p-4 font-sans selection:bg-blue-500/30 selection:text-blue-200 relative z-0 overflow-hidden">
             <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-blue-600/10 blur-[150px] rounded-full pointer-events-none -z-10"></div>
