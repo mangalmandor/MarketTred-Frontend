@@ -15,8 +15,10 @@ const ChatRoom = () => {
     const { messages, isLoading, isSending, conversations } = useSelector((state) => state.chat);
     // console.log("🖼️ UI RENDER: Current messages in component:", messages.length); //👈
     const [newMessage, setNewMessage] = useState('');
-
     const scrollRef = useRef(null);
+
+    const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
+    const typingTimeoutRef = useRef(null);
 
     useEffect(() => {
         if (productId) {
@@ -43,13 +45,25 @@ const ChatRoom = () => {
             }
         };
 
-        socket.on('receiveMessage', handleReceiveMessage);;
+        socket.on('receiveMessage', handleReceiveMessage);
+
+        const handleUserTyping = (data) => {
+            if (String(data.productId) === String(productId)) setIsOtherUserTyping(true);
+        };
+        const handleUserStoppedTyping = (data) => {
+            if (String(data.productId) === String(productId)) setIsOtherUserTyping(false);
+        };
+
+        socket.on('userTyping', handleUserTyping);
+        socket.on('userStoppedTyping', handleUserStoppedTyping);
 
         return () => {
             socket.off('receiveMessage', handleReceiveMessage);
+            socket.off('userTyping', handleUserTyping);
+            socket.off('userStoppedTyping', handleUserStoppedTyping);
             dispatch(clearMessages());
         };
-    }, [dispatch, otherUserId, productId, user?._id, socket]);
+    }, [dispatch, otherUserId, productId, user?._id]);
 
     useEffect(() => {
         scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -92,12 +106,10 @@ const ChatRoom = () => {
         try {
             setNewMessage(''); // Input box turant khali kar do taaki user ko fast lage
 
-            // 2. Pehle Redux API/Backend ko call karo
-            // .unwrap() humein directly backend ka response (Saved Message with real DB _id) dega
+            socket.emit('stopTyping', { senderId: user._id, receiverId: otherUserId, productId });
+
             const savedMessage = await dispatch(sendMessage(messagePayload)).unwrap();
 
-            // 3. Ab jab message DB mein pakka save ho gaya aur ASALI _id mil gayi, 
-            // Tab usey Socket par dusre bande ko bhej do!
             socket.emit('sendMessage', savedMessage);
 
         } catch (error) {
@@ -146,6 +158,32 @@ const ChatRoom = () => {
         }
     };
 
+    const handleTyping = (e) => {
+        setNewMessage(e.target.value);
+        console.log("📤 Sending typing event to user:", otherUserId);
+
+        // Tell the server we are typing
+        socket.emit('typing', {
+            senderId: user._id,
+            receiverId: otherUserId,
+            productId
+        });
+
+        // Clear the old timer
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+
+        // Set a new timer to stop typing after 2 seconds of inactivity
+        typingTimeoutRef.current = setTimeout(() => {
+            socket.emit('stopTyping', {
+                senderId: user._id,
+                receiverId: otherUserId,
+                productId
+            });
+        }, 2000);
+    };
+
     return (
         <div className="flex items-center justify-center w-full h-[100dvh] bg-[#050505] overflow-hidden sm:p-6 lg:p-10 relative z-0 selection:bg-blue-500/30 selection:text-blue-200">
 
@@ -175,7 +213,15 @@ const ChatRoom = () => {
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
                                 </span>
-                                <p className="text-[9px] sm:text-[10px] md:text-xs text-emerald-400 font-bold uppercase tracking-widest truncate">Live Connection</p>
+                                {isOtherUserTyping ? (
+                                    <p className="text-[9px] sm:text-[10px] md:text-xs text-emerald-400 font-bold uppercase tracking-widest truncate">
+                                        typing....
+                                    </p>
+                                ) : (
+                                    <p className="text-[9px] sm:text-[10px] md:text-xs text-green-500 font-bold uppercase tracking-widest truncate">
+                                        Live Connection
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -236,7 +282,7 @@ const ChatRoom = () => {
                             type="text"
                             placeholder="Type your message..."
                             value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
+                            onChange={handleTyping}
                             className="flex-grow bg-transparent border-none focus:ring-0 text-gray-100 font-medium placeholder-gray-500 text-sm sm:text-base py-2.5 sm:py-3 outline-none"
                             required
                         />
