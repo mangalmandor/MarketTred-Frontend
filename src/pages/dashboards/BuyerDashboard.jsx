@@ -47,6 +47,10 @@ const BuyerDashboard = () => {
         };
     }, [dispatch]);
 
+    useEffect(() => {
+        dispatch(fetchAllConversations());
+    }, [dispatch]);
+
 
     const handleLogout = async () => {
         const result = await Swal.fire({

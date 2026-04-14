@@ -26,54 +26,108 @@ const ChatRoom = () => {
         }
     }, [dispatch, productId]);
 
+    // useEffect(() => {
+
+    //     dispatch(fetchChatHistory({ otherUserId, productId }));
+    //     socket.emit('joinRoom', { userId: user?._id, otherUserId, productId });
+
+    //     const handleReceiveMessage = (message) => {
+    //         // 👈 CHANGE: Look for productId in all possible spots
+    //         const incomingProductId = message.productId || message.product?._id || message.product;
+
+    //         // console.log("Checking IDs:", String(incomingProductId), "vs", String(productId));
+
+    //         if (incomingProductId && String(incomingProductId) === String(productId)) {
+    //             dispatch(receiveMessage(message));
+    //         } else {
+    //             // If it's for a different book/product, show the notification instead
+    //             dispatch(handleNewInquiry(message));
+    //         }
+    //     };
+
+    //     socket.on('receiveMessage', handleReceiveMessage);
+
+    //     const handleUserTyping = (data) => {
+    //         if (String(data.productId) === String(productId)) setIsOtherUserTyping(true);
+    //     };
+    //     const handleUserStoppedTyping = (data) => {
+    //         if (String(data.productId) === String(productId)) setIsOtherUserTyping(false);
+    //     };
+
+    //     socket.on('userTyping', handleUserTyping);
+    //     socket.on('userStoppedTyping', handleUserStoppedTyping);
+
+    //     return () => {
+    //         socket.off('receiveMessage', handleReceiveMessage);
+    //         socket.off('userTyping', handleUserTyping);
+    //         socket.off('userStoppedTyping', handleUserStoppedTyping);
+    //         dispatch(clearMessages());
+    //     };
+    // }, [dispatch, otherUserId, productId, user?._id]);
+
     useEffect(() => {
+        // ==========================================
+        // 1. THE TOKEN LOCK (Live Site Fix)
+        // ==========================================
+        const token = localStorage.getItem('token');
 
+        if (!token) {
+            console.log("⏳ Token not ready yet, holding connection...");
+            return; // 🛑 Stop the entire process if the token is missing
+        }
+
+        console.log("✅ Token secured. Connecting to WebSockets!");
+        socket.auth = { token };
+        socket.connect(); // 🔌 Fire the connection manually!
+        // ==========================================
+
+
+        // 2. Fetch history and join room (Your existing logic)
         dispatch(fetchChatHistory({ otherUserId, productId }));
-        socket.emit('joinRoom', { userId: user?._id, otherUserId, productId });
 
+        if (user?._id && otherUserId && productId) {
+            socket.emit('joinRoom', { userId: user._id, otherUserId, productId });
+        }
+
+        // 3. Setup Listeners
         const handleReceiveMessage = (message) => {
-            // 👈 CHANGE: Look for productId in all possible spots
             const incomingProductId = message.productId || message.product?._id || message.product;
-
-            // console.log("Checking IDs:", String(incomingProductId), "vs", String(productId));
-
             if (incomingProductId && String(incomingProductId) === String(productId)) {
                 dispatch(receiveMessage(message));
             } else {
-                // If it's for a different book/product, show the notification instead
                 dispatch(handleNewInquiry(message));
             }
         };
 
-        socket.on('receiveMessage', handleReceiveMessage);
-
         const handleUserTyping = (data) => {
             if (String(data.productId) === String(productId)) setIsOtherUserTyping(true);
         };
+
         const handleUserStoppedTyping = (data) => {
             if (String(data.productId) === String(productId)) setIsOtherUserTyping(false);
         };
 
+        socket.on('receiveMessage', handleReceiveMessage);
         socket.on('userTyping', handleUserTyping);
         socket.on('userStoppedTyping', handleUserStoppedTyping);
 
+        // 4. Cleanup when the user leaves the chat room
         return () => {
             socket.off('receiveMessage', handleReceiveMessage);
             socket.off('userTyping', handleUserTyping);
             socket.off('userStoppedTyping', handleUserStoppedTyping);
             dispatch(clearMessages());
+            socket.disconnect(); // 👈 Make sure it disconnects when they leave!
         };
     }, [dispatch, otherUserId, productId, user?._id]);
+
 
     useEffect(() => {
         scrollRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    // Upar useSelector se conversations zarur nikal lena agar nahi nikala hai:
-    // const { conversations } = useSelector(state => state.chat);
-
     useEffect(() => {
-        // Check karo kya is room mein message aa chuka hai (yani chat DB mein ban gayi hai)
+
         if (messages && messages.length > 0) {
 
             // Check karo kya ye chat pehle se left sidebar (conversations list) mein maujood hai?
