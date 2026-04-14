@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
-import axios from 'axios'; // Iski zaroorat padegi search cancel check ke liye
+import axios from 'axios';
 
 export const fetchProducts = createAsyncThunk(
     'products/fetchProducts',
@@ -82,12 +82,12 @@ export const deleteProduct = createAsyncThunk(
 
 const initialState = {
     items: [],
-    allAvailableItems: [], // Tumhara custom field
+    allAvailableItems: [],
     currentProduct: null,
     sellerInfo: null,
     isLoading: false,
     error: null,
-    // ✨ NAYA (PAGINATION) ✨: Pagination states add kar diye
+
     currentPage: 1,
     totalPages: 1,
     totalProducts: 0,
@@ -111,7 +111,7 @@ const productSlice = createSlice({
         clearSearch: (state) => {
             state.items = [];
         },
-        // ✨ NAYA (PAGINATION) ✨: Page control karne ke liye reducers
+
         setPage: (state, action) => {
             state.currentPage = action.payload;
         },
@@ -121,16 +121,12 @@ const productSlice = createSlice({
     },
     extraReducers: (builder) => {
         builder
-            // Fetch Products
             .addCase(fetchProducts.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
             })
             .addCase(fetchProducts.fulfilled, (state, action) => {
                 state.isLoading = false;
-                // ✨ NAYA (PAGINATION SAFEGUARD) ✨
-                // Check if backend sent the new paginated object { products, totalPages... }
-                // OR if it's still sending the old plain array [ {...}, {...} ]
                 if (action.payload.products) {
                     state.items = action.payload.products;
                     state.allAvailableItems = action.payload.products;
@@ -138,7 +134,7 @@ const productSlice = createSlice({
                     state.totalPages = action.payload.totalPages || 1;
                     state.totalProducts = action.payload.totalProducts || 0;
                 } else {
-                    // Fallback for old backend logic (taaki app crash na ho)
+
                     state.items = action.payload;
                     state.allAvailableItems = action.payload;
                 }
@@ -148,7 +144,6 @@ const productSlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Fetch Product By ID (Untouched)
             .addCase(fetchProductById.pending, (state) => {
                 state.isLoading = true;
                 state.currentProduct = null;
@@ -165,13 +160,12 @@ const productSlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Search Products
             .addCase(searchProducts.pending, (state) => {
                 state.isLoading = true;
             })
             .addCase(searchProducts.fulfilled, (state, action) => {
                 state.isLoading = false;
-                // ✨ NAYA (PAGINATION SAFEGUARD) ✨
+
                 if (action.payload.products) {
                     state.items = action.payload.products;
                     state.currentPage = action.payload.currentPage || 1;
@@ -188,7 +182,6 @@ const productSlice = createSlice({
                 }
             })
 
-            // Add Product (Untouched)
             .addCase(addProduct.pending, (state) => {
                 state.isLoading = true;
             })
@@ -201,7 +194,6 @@ const productSlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Update Product (Untouched)
             .addCase(updateProduct.pending, (state) => {
                 state.isLoading = true;
             })
