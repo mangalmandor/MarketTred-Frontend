@@ -29,9 +29,6 @@ const ChatRoom = () => {
     }, [dispatch, productId]);
 
     useEffect(() => {
-        // ==========================================
-        // 1. THE TOKEN LOCK (Live Site Fix)
-        // ==========================================
         const token = localStorage.getItem('token');
 
         if (!token) {
@@ -43,21 +40,12 @@ const ChatRoom = () => {
         socket.auth = { token };
         socket.connect();
 
-
-        // ==========================================
-        // 2. Fetch history and join room
-        // ==========================================
         dispatch(fetchChatHistory({ otherUserId, productId }));
 
         if (user?._id && otherUserId && productId) {
             socket.emit('joinRoom', { userId: user._id, otherUserId, productId });
         }
 
-        // ==========================================
-        // 3. Setup Listeners
-        // ==========================================
-
-        // Message Listener
         const handleReceiveMessage = (message) => {
             const incomingProductId = message.productId || message.product?._id || message.product;
             if (incomingProductId && String(incomingProductId) === String(productId)) {
@@ -67,7 +55,6 @@ const ChatRoom = () => {
             }
         };
 
-        // Typing Listeners
         const handleUserTyping = (data) => {
             if (String(data.productId) === String(productId)) setIsOtherUserTyping(true);
         };
@@ -75,7 +62,6 @@ const ChatRoom = () => {
             if (String(data.productId) === String(productId)) setIsOtherUserTyping(false);
         };
 
-        // 👈 NEW: Status (Last Seen / Online) Listener
         const handleStatusUpdate = (data) => {
             if (String(data.userId) === String(otherUserId)) {
                 console.log("👤 User Status Changed:", data);
@@ -89,38 +75,32 @@ const ChatRoom = () => {
         socket.on('receiveMessage', handleReceiveMessage);
         socket.on('userTyping', handleUserTyping);
         socket.on('userStoppedTyping', handleUserStoppedTyping);
-        socket.on('statusUpdate', handleStatusUpdate); // 👈 Attach here
+        socket.on('statusUpdate', handleStatusUpdate); 
 
-        // 1. Jaise hi connect ho, saamne waale ka status mango
         socket.emit('requestStatus', {
             targetUserId: otherUserId,
             requesterId: user._id
         });
 
-        // 2. Agar koi mujhse mera status maange, toh use reply do
         socket.on('getPresenceRequest', (data) => {
             socket.emit('respondStatus', {
                 requesterId: data.requesterId,
-                status: true, // Main online hoon tabhi toh ye sun raha hoon
+                status: true,
                 lastSeen: new Date()
             });
         });
 
-        // 3. Status update suno (Jo pehle se likha hai)
         socket.on('statusUpdate', (data) => {
             if (String(data.userId) === String(otherUserId)) {
                 setOtherUserStatus({ isOnline: data.isOnline, lastSeen: data.lastSeen });
             }
         });
 
-        // ==========================================
-        // 4. Cleanup when the user leaves
-        // ==========================================
         return () => {
             socket.off('receiveMessage', handleReceiveMessage);
             socket.off('userTyping', handleUserTyping);
             socket.off('userStoppedTyping', handleUserStoppedTyping);
-            socket.off('statusUpdate', handleStatusUpdate); // 👈 Detach here
+            socket.off('statusUpdate', handleStatusUpdate);
 
             dispatch(clearMessages());
             socket.disconnect();
@@ -135,15 +115,12 @@ const ChatRoom = () => {
 
         if (messages && messages.length > 0) {
 
-            // Check karo kya ye chat pehle se left sidebar (conversations list) mein maujood hai?
             const chatExists = conversations.some(c =>
                 String(c.product?._id || c.product) === String(productId) &&
                 (String(c.seller?._id || c.seller) === String(otherUserId) || String(c.buyer?._id || c.buyer) === String(otherUserId))
             );
 
-            //Agar chat pehli baar hui hai aur sidebar mein dabba nahi hai
             if (!chatExists) {
-                // Background mein list refresh kar lo taaki naya dabba UI mein aa jaye
                 dispatch(fetchAllConversations());
             }
         }
@@ -153,8 +130,6 @@ const ChatRoom = () => {
         e.preventDefault();
         if (!newMessage.trim() || isSending) return;
 
-        // 1. FAKE ID mat banao! Sirf zaroori data bhejo. 
-        // (_id aur createdAt backend MongoDB khud generate karega)
         const messagePayload = {
             receiverId: otherUserId,
             productId,
@@ -163,7 +138,7 @@ const ChatRoom = () => {
         };
 
         try {
-            setNewMessage(''); // Input box turant khali kar do taaki user ko fast lage
+            setNewMessage(''); 
 
             socket.emit('stopTyping', { senderId: user._id, receiverId: otherUserId, productId });
 
@@ -221,19 +196,14 @@ const ChatRoom = () => {
         setNewMessage(e.target.value);
         console.log("📤 Sending typing event to user:", otherUserId);
 
-        // Tell the server we are typing
         socket.emit('typing', {
             senderId: user._id,
             receiverId: otherUserId,
             productId
         });
-
-        // Clear the old timer
         if (typingTimeoutRef.current) {
             clearTimeout(typingTimeoutRef.current);
         }
-
-        // Set a new timer to stop typing after 2 seconds of inactivity
         typingTimeoutRef.current = setTimeout(() => {
             socket.emit('stopTyping', {
                 senderId: user._id,
@@ -243,19 +213,31 @@ const ChatRoom = () => {
         }, 2000);
     };
 
+    useEffect(() => {
+        const syncWithDB = async () => {
+            const res = await api.get(`/users/status/${otherUserId}`);
+            setOtherUserStatus({ isOnline: res.data.isOnline, lastSeen: res.data.lastSeen });
+        };
+        syncWithDB();
+
+        socket.on('statusUpdate', (data) => {
+            if (String(data.userId) === String(otherUserId)) {
+                setOtherUserStatus({ isOnline: data.isOnline, lastSeen: data.lastSeen });
+            }
+        });
+
+        return () => socket.off('statusUpdate');
+    }, [otherUserId]);
+
     return (
         <div className="flex items-center justify-center w-full h-[100dvh] bg-[#050505] overflow-hidden sm:p-6 lg:p-10 relative z-0 selection:bg-blue-500/30 selection:text-blue-200">
-
-            {/* Ambient Background Glows */}
             <div className="absolute top-[-10%] left-1/4 w-[40vw] h-[40vw] bg-blue-600/5 blur-[150px] rounded-full pointer-events-none -z-10"></div>
             <div className="absolute bottom-[-10%] right-1/4 w-[30vw] h-[30vw] bg-indigo-600/5 blur-[150px] rounded-full pointer-events-none -z-10"></div>
 
             <div className="flex flex-col w-full max-w-5xl h-full sm:h-[88vh] bg-[#0A0A0A]/90 backdrop-blur-3xl sm:rounded-[2.5rem] sm:border border-gray-800 shadow-[0_8px_30px_rgb(0,0,0,0.3)] relative z-10 overflow-hidden mt-48">
 
-                {/* Header (Fixed) */}
                 <header className="flex-shrink-0 bg-gray-900/40 border-b border-gray-800/80 px-4 sm:px-8 py-4 flex items-center justify-between shadow-sm gap-3">
 
-                    {/* Left side: Back button + Title */}
                     <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                         <button onClick={() => navigate(-1)} className="..."> {/* Back Button code same rahega */} </button>
 
@@ -265,7 +247,6 @@ const ChatRoom = () => {
                             </h2>
 
                             <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
-                                {/* Status Indicator Dot */}
                                 <span className="relative flex h-2 w-2 flex-shrink-0">
                                     {otherUserStatus.isOnline && (
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -274,7 +255,6 @@ const ChatRoom = () => {
                                         }`}></span>
                                 </span>
 
-                                {/* Status Text Logic */}
                                 {isOtherUserTyping ? (
                                     <p className="text-[9px] sm:text-[10px] md:text-xs text-emerald-400 font-bold uppercase tracking-widest truncate">
                                         typing....
@@ -294,7 +274,6 @@ const ChatRoom = () => {
                         </div>
                     </div>
 
-                    {/* Right side: SUPER VISIBLE DELETE BUTTON */}
                     <button
                         onClick={handleDelete}
                         title="Delete Chat"
@@ -308,7 +287,6 @@ const ChatRoom = () => {
 
                 </header>
 
-                {/* Chat Feed */}
                 <main className="flex-grow overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar min-h-0">
                     {messages.length === 0 && !isLoading && (
                         <div className="flex items-center justify-center h-full">
@@ -343,7 +321,6 @@ const ChatRoom = () => {
                     <div ref={scrollRef} className="h-1" />
                 </main>
 
-                {/* Input Footer (Fixed) */}
                 <footer className="flex-shrink-0 bg-gray-900/40 border-t border-gray-800/80 p-3 sm:p-4 md:p-6 z-20">
                     <form onSubmit={handleSendMessage} className="flex items-center gap-2 sm:gap-3 bg-gray-800/30 p-1 sm:p-1.5 pl-4 sm:pl-6 rounded-[1.2rem] sm:rounded-2xl border border-gray-700/50 focus-within:border-blue-500/50 focus-within:bg-gray-800/50 transition-all shadow-inner">
                         <input
