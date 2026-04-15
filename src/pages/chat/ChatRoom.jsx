@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { socket } from '../../services/socket';
-// MAKE SURE TO IMPORT deleteChat HERE 👇
 import { fetchChatHistory, sendMessage, receiveMessage, clearMessages, deleteChat, handleNewInquiry, fetchAllConversations } from '../../features/chat/chatSlice';
 import { fetchProducts } from '../../features/products/productSlice';
 import Swal from 'sweetalert2';
@@ -13,8 +12,11 @@ const ChatRoom = () => {
     const dispatch = useDispatch();
     const { user } = useSelector((state) => state.auth);
     const { messages, isLoading, isSending, conversations } = useSelector((state) => state.chat);
-    // console.log("🖼️ UI RENDER: Current messages in component:", messages.length); //👈
     const [newMessage, setNewMessage] = useState('');
+    const [otherUserStatus, setOtherUserStatus] = useState({
+        isOnline: false,
+        lastSeen: null
+    });
     const scrollRef = useRef(null);
 
     const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
@@ -26,45 +28,6 @@ const ChatRoom = () => {
         }
     }, [dispatch, productId]);
 
-    // useEffect(() => {
-
-    //     dispatch(fetchChatHistory({ otherUserId, productId }));
-    //     socket.emit('joinRoom', { userId: user?._id, otherUserId, productId });
-
-    //     const handleReceiveMessage = (message) => {
-    //         // 👈 CHANGE: Look for productId in all possible spots
-    //         const incomingProductId = message.productId || message.product?._id || message.product;
-
-    //         // console.log("Checking IDs:", String(incomingProductId), "vs", String(productId));
-
-    //         if (incomingProductId && String(incomingProductId) === String(productId)) {
-    //             dispatch(receiveMessage(message));
-    //         } else {
-    //             // If it's for a different book/product, show the notification instead
-    //             dispatch(handleNewInquiry(message));
-    //         }
-    //     };
-
-    //     socket.on('receiveMessage', handleReceiveMessage);
-
-    //     const handleUserTyping = (data) => {
-    //         if (String(data.productId) === String(productId)) setIsOtherUserTyping(true);
-    //     };
-    //     const handleUserStoppedTyping = (data) => {
-    //         if (String(data.productId) === String(productId)) setIsOtherUserTyping(false);
-    //     };
-
-    //     socket.on('userTyping', handleUserTyping);
-    //     socket.on('userStoppedTyping', handleUserStoppedTyping);
-
-    //     return () => {
-    //         socket.off('receiveMessage', handleReceiveMessage);
-    //         socket.off('userTyping', handleUserTyping);
-    //         socket.off('userStoppedTyping', handleUserStoppedTyping);
-    //         dispatch(clearMessages());
-    //     };
-    // }, [dispatch, otherUserId, productId, user?._id]);
-
     useEffect(() => {
         // ==========================================
         // 1. THE TOKEN LOCK (Live Site Fix)
@@ -73,23 +36,28 @@ const ChatRoom = () => {
 
         if (!token) {
             console.log("⏳ Token not ready yet, holding connection...");
-            return; // 🛑 Stop the entire process if the token is missing
+            return;
         }
 
         console.log("✅ Token secured. Connecting to WebSockets!");
         socket.auth = { token };
-        socket.connect(); // 🔌 Fire the connection manually!
+        socket.connect();
+
+
         // ==========================================
-
-
-        // 2. Fetch history and join room (Your existing logic)
+        // 2. Fetch history and join room
+        // ==========================================
         dispatch(fetchChatHistory({ otherUserId, productId }));
 
         if (user?._id && otherUserId && productId) {
             socket.emit('joinRoom', { userId: user._id, otherUserId, productId });
         }
 
+        // ==========================================
         // 3. Setup Listeners
+        // ==========================================
+
+        // Message Listener
         const handleReceiveMessage = (message) => {
             const incomingProductId = message.productId || message.product?._id || message.product;
             if (incomingProductId && String(incomingProductId) === String(productId)) {
@@ -99,28 +67,65 @@ const ChatRoom = () => {
             }
         };
 
+        // Typing Listeners
         const handleUserTyping = (data) => {
             if (String(data.productId) === String(productId)) setIsOtherUserTyping(true);
         };
-
         const handleUserStoppedTyping = (data) => {
             if (String(data.productId) === String(productId)) setIsOtherUserTyping(false);
+        };
+
+        // 👈 NEW: Status (Last Seen / Online) Listener
+        const handleStatusUpdate = (data) => {
+            if (String(data.userId) === String(otherUserId)) {
+                console.log("👤 User Status Changed:", data);
+                setOtherUserStatus({
+                    isOnline: data.isOnline,
+                    lastSeen: data.lastSeen
+                });
+            }
         };
 
         socket.on('receiveMessage', handleReceiveMessage);
         socket.on('userTyping', handleUserTyping);
         socket.on('userStoppedTyping', handleUserStoppedTyping);
+        socket.on('statusUpdate', handleStatusUpdate); // 👈 Attach here
 
-        // 4. Cleanup when the user leaves the chat room
+        // 1. Jaise hi connect ho, saamne waale ka status mango
+        socket.emit('requestStatus', {
+            targetUserId: otherUserId,
+            requesterId: user._id
+        });
+
+        // 2. Agar koi mujhse mera status maange, toh use reply do
+        socket.on('getPresenceRequest', (data) => {
+            socket.emit('respondStatus', {
+                requesterId: data.requesterId,
+                status: true, // Main online hoon tabhi toh ye sun raha hoon
+                lastSeen: new Date()
+            });
+        });
+
+        // 3. Status update suno (Jo pehle se likha hai)
+        socket.on('statusUpdate', (data) => {
+            if (String(data.userId) === String(otherUserId)) {
+                setOtherUserStatus({ isOnline: data.isOnline, lastSeen: data.lastSeen });
+            }
+        });
+
+        // ==========================================
+        // 4. Cleanup when the user leaves
+        // ==========================================
         return () => {
             socket.off('receiveMessage', handleReceiveMessage);
             socket.off('userTyping', handleUserTyping);
             socket.off('userStoppedTyping', handleUserStoppedTyping);
+            socket.off('statusUpdate', handleStatusUpdate); // 👈 Detach here
+
             dispatch(clearMessages());
-            socket.disconnect(); // 👈 Make sure it disconnects when they leave!
+            socket.disconnect();
         };
     }, [dispatch, otherUserId, productId, user?._id]);
-
 
     useEffect(() => {
         scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -252,28 +257,37 @@ const ChatRoom = () => {
 
                     {/* Left side: Back button + Title */}
                     <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                        <button
-                            onClick={() => navigate(-1)}
-                            className="flex-shrink-0 p-2 sm:p-2.5 bg-gray-800/50 hover:bg-gray-700 border border-gray-700/50 rounded-full text-gray-400 hover:text-white transition-all active:scale-95"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                        </button>
+                        <button onClick={() => navigate(-1)} className="..."> {/* Back Button code same rahega */} </button>
 
-                        {/* min-w-0 and truncate ensure long titles don't push the delete button off screen */}
                         <div className="min-w-0">
-                            <h2 className="text-base sm:text-lg md:text-xl font-black text-gray-100 tracking-tight truncate">Negotiation Room</h2>
+                            <h2 className="text-base sm:text-lg md:text-xl font-black text-gray-100 tracking-tight truncate">
+                                Negotiation Room
+                            </h2>
+
                             <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
+                                {/* Status Indicator Dot */}
                                 <span className="relative flex h-2 w-2 flex-shrink-0">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
+                                    {otherUserStatus.isOnline && (
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    )}
+                                    <span className={`relative inline-flex rounded-full h-2 w-2 ${otherUserStatus.isOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-gray-600'
+                                        }`}></span>
                                 </span>
+
+                                {/* Status Text Logic */}
                                 {isOtherUserTyping ? (
                                     <p className="text-[9px] sm:text-[10px] md:text-xs text-emerald-400 font-bold uppercase tracking-widest truncate">
                                         typing....
                                     </p>
+                                ) : otherUserStatus.isOnline ? (
+                                    <p className="text-[9px] sm:text-[10px] md:text-xs text-emerald-500 font-bold uppercase tracking-widest truncate">
+                                        Online
+                                    </p>
                                 ) : (
-                                    <p className="text-[9px] sm:text-[10px] md:text-xs text-green-500 font-bold uppercase tracking-widest truncate">
-                                        Live Connection
+                                    <p className="text-[9px] sm:text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-widest truncate">
+                                        {otherUserStatus.lastSeen
+                                            ? `Last seen: ${new Date(otherUserStatus.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                            : 'Offline'}
                                     </p>
                                 )}
                             </div>
